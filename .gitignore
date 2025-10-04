@@ -1,0 +1,32 @@
+# Build artifacts
+bin/
+obj/
+out/
+TestResults/
+**/*.trx
+
+# IDE / tooling
+.vs/
+.idea/
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Packages / NuGet
+packages/
+.nupkg/
+*.nupkg
+*.snupkg
+nupkgs/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Logs / coverage / temp
+*.log
+*.coverage*
+coverage/
+.temp/

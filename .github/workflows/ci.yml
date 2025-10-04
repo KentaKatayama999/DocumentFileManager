@@ -1,0 +1,31 @@
+# .github/workflows/ci.yml  ← これは template.json とは別ファイル
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [ main, master ]
+permissions:
+  contents: read
+env:
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Restore
+        run: dotnet restore DocumentFileManager.sln
+      - name: Verify formatting
+        run: dotnet format DocumentFileManager.sln --verify-no-changes --no-restore
+      - name: Build (Release)
+        run: dotnet build DocumentFileManager.sln --no-restore -c Release -p:ContinuousIntegrationBuild=true
+      - name: Test (Release)
+        run: dotnet test DocumentFileManager.sln --no-build -c Release

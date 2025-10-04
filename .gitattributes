@@ -1,0 +1,7 @@
+# Normalize line endings
+* text=auto eol=lf
+
+# Keep Windows-specific files as CRLF
+*.sln text eol=crlf
+*.bat  text eol=crlf
+*.cmd  text eol=crlf

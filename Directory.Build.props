@@ -1,0 +1,35 @@
+<Project>
+    <PropertyGroup>
+        <!-- 共通ビルドオプション -->
+        <LangVersion>latestMajor</LangVersion>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Deterministic>true</Deterministic>
+
+
+        <!-- アナライザー/スタイル -->
+        <EnableNETAnalyzers>true</EnableNETAnalyzers>
+        <AnalysisLevel>latest</AnalysisLevel>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+
+        <!-- CI 環境では警告をエラー化（GitHub Actions など） -->
+        <TreatWarningsAsErrors Condition="'$(GITHUB_ACTIONS)' == 'true'">true</TreatWarningsAsErrors>
+
+
+        <!-- パッケージ共通メタ（必要に応じて上書き） -->
+        <RepositoryUrl>https://github.com/your/repo</RepositoryUrl>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <!-- README を NuGet に含める場合は、ルートの README.md を参照 -->
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+    </PropertyGroup>
+
+
+    <!-- テスト プロジェクトの慣習（名前で判定・任意） -->
+    <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+</Project>
