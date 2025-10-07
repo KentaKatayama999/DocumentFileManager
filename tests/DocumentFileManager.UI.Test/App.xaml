@@ -1,0 +1,9 @@
+﻿<Application x:Class="DocumentFileManager.UI.Test.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:DocumentFileManager.UI.Test"
+             StartupUri="Views/ReferWindow.xaml">
+    <Application.Resources>
+         
+    </Application.Resources>
+</Application>

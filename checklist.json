@@ -1,0 +1,464 @@
+{
+  "checkItems": [
+    {
+      "label": "設計図面",
+      "type": "category",
+      "children": [
+        {
+          "label": "建築図面",
+          "type": "category",
+          "children": [
+            {
+              "label": "平面図",
+              "type": "category",
+              "children": [
+                {
+                  "label": "地下1階平面図",
+                  "type": "item",
+                  "checked": false
+                },
+                {
+                  "label": "1階平面図",
+                  "type": "item",
+                  "checked": true
+                },
+                {
+                  "label": "2階平面図",
+                  "type": "item",
+                  "checked": true
+                },
+                {
+                  "label": "3階平面図",
+                  "type": "item",
+                  "checked": true
+                },
+                {
+                  "label": "4階平面図",
+                  "type": "item",
+                  "checked": false
+                },
+                {
+                  "label": "5階平面図",
+                  "type": "item",
+                  "checked": false
+                },
+                {
+                  "label": "塔屋平面図",
+                  "type": "item",
+                  "checked": false
+                },
+                {
+                  "label": "屋上平面図",
+                  "type": "item",
+                  "checked": false
+                }
+              ]
+            },
+            {
+              "label": "立面図",
+              "type": "category",
+              "children": [
+                {
+                  "label": "東側立面図",
+                  "type": "item",
+                  "checked": true
+                },
+                {
+                  "label": "西側立面図",
+                  "type": "item",
+                  "checked": false
+                },
+                {
+                  "label": "南側立面図",
+                  "type": "item",
+                  "checked": true
+                },
+                {
+                  "label": "北側立面図",
+                  "type": "item",
+                  "checked": false
+                }
+              ]
+            },
+            {
+              "label": "断面図",
+              "type": "category",
+              "children": [
+                {
+                  "label": "断面図A-A'",
+                  "type": "item",
+                  "checked": false
+                },
+                {
+                  "label": "断面図B-B'",
+                  "type": "item",
+                  "checked": true
+                },
+                {
+                  "label": "断面図C-C'",
+                  "type": "item",
+                  "checked": false
+                },
+                {
+                  "label": "矩計図",
+                  "type": "item",
+                  "checked": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "設備図面",
+          "type": "category",
+          "children": [
+            {
+              "label": "電気設備",
+              "type": "category",
+              "children": [
+                {
+                  "label": "電灯配線図",
+                  "type": "item",
+                  "checked": true
+                },
+                {
+                  "label": "動力配線図",
+                  "type": "item",
+                  "checked": false
+                },
+                {
+                  "label": "弱電設備図",
+                  "type": "item",
+                  "checked": true
+                },
+                {
+                  "label": "幹線系統図",
+                  "type": "item",
+                  "checked": false
+                },
+                {
+                  "label": "分電盤結線図",
+                  "type": "item",
+                  "checked": true
+                }
+              ]
+            },
+            {
+              "label": "機械設備",
+              "type": "category",
+              "children": [
+                {
+                  "label": "空調配管図",
+                  "type": "item",
+                  "checked": true
+                },
+                {
+                  "label": "換気設備図",
+                  "type": "item",
+                  "checked": false
+                },
+                {
+                  "label": "給排水設備図",
+                  "type": "item",
+                  "checked": true
+                },
+                {
+                  "label": "衛生設備図",
+                  "type": "item",
+                  "checked": false
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "仕様書",
+      "type": "category",
+      "children": [
+        {
+          "label": "建築仕様",
+          "type": "category",
+          "children": [
+            {
+              "label": "外装仕様",
+              "type": "category",
+              "children": [
+                {
+                  "label": "外壁仕上げ",
+                  "type": "item",
+                  "checked": true
+                },
+                {
+                  "label": "屋根仕上げ",
+                  "type": "item",
+                  "checked": true
+                }
+              ]
+            },
+            {
+              "label": "内装仕様",
+              "type": "category",
+              "children": [
+                {
+                  "label": "床仕上げ",
+                  "type": "item",
+                  "checked": false
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "設備仕様",
+          "type": "category",
+          "children": [
+            {
+              "label": "電気設備仕様",
+              "type": "category",
+              "children": [
+                {
+                  "label": "照明器具",
+                  "type": "item",
+                  "checked": true
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "テスト",
+      "type": "category",
+      "children": [
+        {
+          "label": "単体テスト",
+          "type": "category",
+          "children": [
+            {
+              "label": "ドメイン層",
+              "type": "category",
+              "children": [
+                {
+                  "label": "CheckItemテスト",
+                  "type": "item",
+                  "checked": true
+                },
+                {
+                  "label": "Documentテスト",
+                  "type": "item",
+                  "checked": false
+                },
+                {
+                  "label": "ValueObjectテスト",
+                  "type": "item",
+                  "checked": true
+                }
+              ]
+            },
+            {
+              "label": "リポジトリ層",
+              "type": "category",
+              "children": [
+                {
+                  "label": "CheckItemRepositoryテスト",
+                  "type": "item",
+                  "checked": true
+                },
+                {
+                  "label": "DocumentRepositoryテスト",
+                  "type": "item",
+                  "checked": false
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "結合テスト",
+          "type": "category",
+          "children": [
+            {
+              "label": "UI統合",
+              "type": "category",
+              "children": [
+                {
+                  "label": "資料登録フロー",
+                  "type": "item",
+                  "checked": false
+                },
+                {
+                  "label": "チェック項目表示",
+                  "type": "item",
+                  "checked": true
+                }
+              ]
+            },
+            {
+              "label": "データベース統合",
+              "type": "category",
+              "children": [
+                {
+                  "label": "マイグレーション確認",
+                  "type": "item",
+                  "checked": true
+                },
+                {
+                  "label": "シードデータ確認",
+                  "type": "item",
+                  "checked": true
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "契約書類",
+      "type": "category",
+      "children": [
+        {
+          "label": "請負契約",
+          "type": "category",
+          "children": [
+            {
+              "label": "工事請負契約書",
+              "type": "item",
+              "checked": true
+            },
+            {
+              "label": "設計契約書",
+              "type": "item",
+              "checked": true
+            },
+            {
+              "label": "監理契約書",
+              "type": "item",
+              "checked": false
+            }
+          ]
+        },
+        {
+          "label": "変更契約",
+          "type": "category",
+          "children": [
+            {
+              "label": "第1回変更契約書",
+              "type": "item",
+              "checked": false
+            },
+            {
+              "label": "第2回変更契約書",
+              "type": "item",
+              "checked": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "検査記録",
+      "type": "category",
+      "children": [
+        {
+          "label": "中間検査",
+          "type": "category",
+          "children": [
+            {
+              "label": "配筋検査記録",
+              "type": "item",
+              "checked": true
+            },
+            {
+              "label": "躯体検査記録",
+              "type": "item",
+              "checked": true
+            },
+            {
+              "label": "防水検査記録",
+              "type": "item",
+              "checked": false
+            }
+          ]
+        },
+        {
+          "label": "完了検査",
+          "type": "category",
+          "children": [
+            {
+              "label": "建築確認検査済証",
+              "type": "item",
+              "checked": false
+            },
+            {
+              "label": "消防検査済証",
+              "type": "item",
+              "checked": false
+            },
+            {
+              "label": "保健所検査済証",
+              "type": "item",
+              "checked": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "施工記録",
+      "type": "category",
+      "children": [
+        {
+          "label": "写真管理",
+          "type": "category",
+          "children": [
+            {
+              "label": "着工前写真",
+              "type": "item",
+              "checked": true
+            },
+            {
+              "label": "基礎工事写真",
+              "type": "item",
+              "checked": true
+            },
+            {
+              "label": "躯体工事写真",
+              "type": "item",
+              "checked": true
+            },
+            {
+              "label": "仕上工事写真",
+              "type": "item",
+              "checked": false
+            },
+            {
+              "label": "竣工写真",
+              "type": "item",
+              "checked": false
+            }
+          ]
+        },
+        {
+          "label": "報告書",
+          "type": "category",
+          "children": [
+            {
+              "label": "月次報告書",
+              "type": "item",
+              "checked": true
+            },
+            {
+              "label": "完成報告書",
+              "type": "item",
+              "checked": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

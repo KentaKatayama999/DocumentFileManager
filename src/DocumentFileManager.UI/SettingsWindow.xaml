@@ -1,0 +1,179 @@
+<Window x:Class="DocumentFileManager.UI.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="UI設定"
+        Height="700" Width="600"
+        MinHeight="600" MinWidth="550"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- チェックボックス設定 -->
+                <GroupBox Header="チェックボックス設定" Margin="0,0,0,10" Padding="10">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="最小幅:" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="CheckBoxMinWidth" Width="100" Text="{Binding CheckBox.MinWidth}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="フォントサイズ:" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="CheckBoxFontSize" Width="100" Text="{Binding CheckBox.FontSize}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="マージン深さ倍率:" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="CheckBoxMarginDepthMultiplier" Width="100" Text="{Binding CheckBox.MarginDepthMultiplier}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="左マージン:" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="CheckBoxMarginLeft" Width="100" Text="{Binding CheckBox.MarginLeft}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="上マージン:" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="CheckBoxMarginTop" Width="100" Text="{Binding CheckBox.MarginTop}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="右マージン:" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="CheckBoxMarginRight" Width="100" Text="{Binding CheckBox.MarginRight}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="下マージン:" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="CheckBoxMarginBottom" Width="100" Text="{Binding CheckBox.MarginBottom}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- グループボックス設定 -->
+                <GroupBox Header="グループボックス設定" Margin="0,0,0,10" Padding="10">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="ルート最小幅:" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="GroupBoxRootMinWidth" Width="100" Text="{Binding GroupBox.RootMinWidth}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="子項目最小幅:" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="GroupBoxChildItemMinWidth" Width="100" Text="{Binding GroupBox.ChildItemMinWidth}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="子分類最小幅:" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="GroupBoxChildCategoryMinWidth" Width="100" Text="{Binding GroupBox.ChildCategoryMinWidth}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="内側の間隔:" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="GroupBoxPadding" Width="100" Text="{Binding GroupBox.Padding}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="枠線の太さ:" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="GroupBoxBorderThickness" Width="100" Text="{Binding GroupBox.BorderThickness}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="マージン深さ倍率:" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="GroupBoxMarginDepthMultiplier" Width="100" Text="{Binding GroupBox.MarginDepthMultiplier}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="上マージン:" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="GroupBoxMarginTop" Width="100" Text="{Binding GroupBox.MarginTop}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="右マージン:" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="GroupBoxMarginRight" Width="100" Text="{Binding GroupBox.MarginRight}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="下マージン:" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="GroupBoxMarginBottom" Width="100" Text="{Binding GroupBox.MarginBottom}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- レイアウト設定 -->
+                <GroupBox Header="レイアウト設定" Margin="0,0,0,10" Padding="10">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="項目横並び閾値:" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="LayoutWrapPanelItemThreshold" Width="100" Text="{Binding Layout.WrapPanelItemThreshold}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="分類横並び閾値:" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="LayoutWrapPanelCategoryThreshold" Width="100" Text="{Binding Layout.WrapPanelCategoryThreshold}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="最大列数:" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="LayoutMaxColumnsPerRow" Width="100" Text="{Binding Layout.MaxColumnsPerRow}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="列あたり幅:" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="LayoutWidthPerColumn" Width="100" Text="{Binding Layout.WidthPerColumn}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="追加間隔:" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="LayoutGroupBoxExtraPadding" Width="100" Text="{Binding Layout.GroupBoxExtraPadding}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="最大計算幅:" Width="150" VerticalAlignment="Center"/>
+                            <TextBox x:Name="LayoutMaxCalculatedWidth" Width="100" Text="{Binding Layout.MaxCalculatedWidth}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- 色設定 -->
+                <GroupBox Header="色設定（RGB）" Margin="0,0,0,10" Padding="10">
+                    <StackPanel>
+                        <TextBlock Text="大分類（深さ0）" FontWeight="Bold" Margin="0,5"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="R:" Width="30" VerticalAlignment="Center"/>
+                            <TextBox x:Name="ColorDepth0R" Width="60" Text="{Binding Colors.Depth0.R}"/>
+                            <TextBlock Text="G:" Width="30" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            <TextBox x:Name="ColorDepth0G" Width="60" Text="{Binding Colors.Depth0.G}"/>
+                            <TextBlock Text="B:" Width="30" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            <TextBox x:Name="ColorDepth0B" Width="60" Text="{Binding Colors.Depth0.B}"/>
+                        </StackPanel>
+
+                        <TextBlock Text="中分類（深さ1）" FontWeight="Bold" Margin="0,10,0,5"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="R:" Width="30" VerticalAlignment="Center"/>
+                            <TextBox x:Name="ColorDepth1R" Width="60" Text="{Binding Colors.Depth1.R}"/>
+                            <TextBlock Text="G:" Width="30" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            <TextBox x:Name="ColorDepth1G" Width="60" Text="{Binding Colors.Depth1.G}"/>
+                            <TextBlock Text="B:" Width="30" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            <TextBox x:Name="ColorDepth1B" Width="60" Text="{Binding Colors.Depth1.B}"/>
+                        </StackPanel>
+
+                        <TextBlock Text="小分類（深さ2）" FontWeight="Bold" Margin="0,10,0,5"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="R:" Width="30" VerticalAlignment="Center"/>
+                            <TextBox x:Name="ColorDepth2R" Width="60" Text="{Binding Colors.Depth2.R}"/>
+                            <TextBlock Text="G:" Width="30" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            <TextBox x:Name="ColorDepth2G" Width="60" Text="{Binding Colors.Depth2.G}"/>
+                            <TextBlock Text="B:" Width="30" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            <TextBox x:Name="ColorDepth2B" Width="60" Text="{Binding Colors.Depth2.B}"/>
+                        </StackPanel>
+
+                        <TextBlock Text="デフォルト（深さ3以上）" FontWeight="Bold" Margin="0,10,0,5"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="R:" Width="30" VerticalAlignment="Center"/>
+                            <TextBox x:Name="ColorDepthDefaultR" Width="60" Text="{Binding Colors.DepthDefault.R}"/>
+                            <TextBlock Text="G:" Width="30" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            <TextBox x:Name="ColorDepthDefaultG" Width="60" Text="{Binding Colors.DepthDefault.G}"/>
+                            <TextBlock Text="B:" Width="30" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            <TextBox x:Name="ColorDepthDefaultB" Width="60" Text="{Binding Colors.DepthDefault.B}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </GroupBox>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- ボタン -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button x:Name="SaveButton" Content="保存" Width="80" Margin="0,0,10,0" Click="SaveButton_Click"/>
+            <Button x:Name="CancelButton" Content="キャンセル" Width="80" Click="CancelButton_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>
