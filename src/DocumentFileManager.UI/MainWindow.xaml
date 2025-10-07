@@ -57,6 +57,11 @@
                                 Padding="10,5"
                                 Margin="0,0,5,0"
                                 Click="LoadDocumentsButton_Click"/>
+                        <Button x:Name="AddDocumentButton"
+                                Content="資料追加"
+                                Padding="10,5"
+                                Margin="0,0,5,0"
+                                Click="AddDocumentButton_Click"/>
                         <TextBlock x:Name="DocumentCountText"
                                    VerticalAlignment="Center"
                                    Text="0 件"/>
@@ -64,12 +69,17 @@
 
                     <ListView x:Name="DocumentsListView"
                               Grid.Row="1"
-                              Margin="5">
+                              Margin="5"
+                              AllowDrop="True"
+                              DragEnter="DocumentsListView_DragEnter"
+                              Drop="DocumentsListView_Drop"
+                              MouseDoubleClick="DocumentsListView_MouseDoubleClick">
                         <ListView.View>
                             <GridView>
-                                <GridViewColumn Header="ID" Width="50" DisplayMemberBinding="{Binding Id}"/>
-                                <GridViewColumn Header="ファイル名" Width="200" DisplayMemberBinding="{Binding FileName}"/>
+                                <GridViewColumn Header="ファイル名" Width="180" DisplayMemberBinding="{Binding FileName}"/>
                                 <GridViewColumn Header="種類" Width="60" DisplayMemberBinding="{Binding FileType}"/>
+                                <GridViewColumn Header="相対パス" Width="250" DisplayMemberBinding="{Binding RelativePath}"/>
+                                <GridViewColumn Header="追加日時" Width="140" DisplayMemberBinding="{Binding AddedAt, StringFormat={}{0:yyyy/MM/dd HH:mm}}"/>
                             </GridView>
                         </ListView.View>
                     </ListView>
