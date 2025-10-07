@@ -17,6 +17,7 @@
       "Bash(sqlite3:*)",
       "Bash(git add:*)",
       "Bash(git reset:*)",
+      "Bash(git merge:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(git checkout:*)",
