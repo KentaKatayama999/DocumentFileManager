@@ -42,6 +42,12 @@ public class CheckItemDocumentRepository : ICheckItemDocumentRepository
             .ToListAsync();
     }
 
+    public async Task<CheckItemDocument?> GetByDocumentAndCheckItemAsync(int documentId, int checkItemId)
+    {
+        return await _context.CheckItemDocuments
+            .FirstOrDefaultAsync(cd => cd.DocumentId == documentId && cd.CheckItemId == checkItemId);
+    }
+
     public async Task AddAsync(CheckItemDocument checkItemDocument)
     {
         await _context.CheckItemDocuments.AddAsync(checkItemDocument);

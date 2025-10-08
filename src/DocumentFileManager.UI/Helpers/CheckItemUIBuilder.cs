@@ -3,6 +3,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using DocumentFileManager.Entities;
 using DocumentFileManager.Infrastructure.Repositories;
 using DocumentFileManager.UI.Configuration;
 using DocumentFileManager.UI.ViewModels;
@@ -16,12 +17,19 @@ namespace DocumentFileManager.UI.Helpers;
 public class CheckItemUIBuilder
 {
     private readonly ICheckItemRepository _repository;
+    private readonly ICheckItemDocumentRepository _checkItemDocumentRepository;
     private readonly UISettings _settings;
     private readonly ILogger<CheckItemUIBuilder> _logger;
+    private Document? _currentDocument;
 
-    public CheckItemUIBuilder(ICheckItemRepository repository, UISettings settings, ILogger<CheckItemUIBuilder> logger)
+    public CheckItemUIBuilder(
+        ICheckItemRepository repository,
+        ICheckItemDocumentRepository checkItemDocumentRepository,
+        UISettings settings,
+        ILogger<CheckItemUIBuilder> logger)
     {
         _repository = repository;
+        _checkItemDocumentRepository = checkItemDocumentRepository;
         _settings = settings;
         _logger = logger;
     }
@@ -30,9 +38,19 @@ public class CheckItemUIBuilder
     /// チェック項目の階層UIを構築する
     /// </summary>
     /// <param name="containerPanel">親となるPanel</param>
-    public async Task BuildAsync(Panel containerPanel)
+    /// <param name="document">紐づけるDocumentオブジェクト（nullの場合は全体表示）</param>
+    public async Task BuildAsync(Panel containerPanel, Document? document = null)
     {
-        _logger.LogInformation("チェック項目UIの構築を開始します");
+        _currentDocument = document;
+
+        if (document != null)
+        {
+            _logger.LogInformation("チェック項目UIの構築を開始します (Document: {DocumentId})", document.Id);
+        }
+        else
+        {
+            _logger.LogInformation("チェック項目UIの構築を開始します（全体表示）");
+        }
 
         containerPanel.Children.Clear();
 
@@ -41,8 +59,17 @@ public class CheckItemUIBuilder
 
         _logger.LogInformation("{Count} 件のルート項目を取得しました", rootItems.Count);
 
+        // Documentと紐づいたチェック項目を取得（Documentが指定されている場合）
+        Dictionary<int, CheckItemDocument>? checkItemDocuments = null;
+        if (document != null)
+        {
+            var linkedItems = await _checkItemDocumentRepository.GetByDocumentIdAsync(document.Id);
+            checkItemDocuments = linkedItems.ToDictionary(x => x.CheckItemId);
+            _logger.LogInformation("{Count} 件の紐づけデータを取得しました", linkedItems.Count);
+        }
+
         // ViewModelに変換
-        var viewModels = BuildViewModelHierarchy(rootItems);
+        var viewModels = BuildViewModelHierarchy(rootItems, checkItemDocuments);
 
         // UIを構築
         foreach (var viewModel in viewModels)
@@ -66,7 +93,9 @@ public class CheckItemUIBuilder
     /// <summary>
     /// ViewModelの階層構造を構築する
     /// </summary>
-    private List<CheckItemViewModel> BuildViewModelHierarchy(List<Entities.CheckItem> items)
+    private List<CheckItemViewModel> BuildViewModelHierarchy(
+        List<Entities.CheckItem> items,
+        Dictionary<int, CheckItemDocument>? checkItemDocuments)
     {
         var viewModels = new List<CheckItemViewModel>();
 
@@ -74,10 +103,17 @@ public class CheckItemUIBuilder
         {
             var viewModel = new CheckItemViewModel(item);
 
+            // Documentと紐づいている場合は、紐づけデータからチェック状態を設定
+            if (checkItemDocuments != null && checkItemDocuments.TryGetValue(item.Id, out var linkedItem))
+            {
+                viewModel.IsChecked = true; // 紐づけが存在する場合はチェック済みとする
+                _logger.LogDebug("紐づけデータからチェック状態を設定: {Path} = チェック済み", item.Path);
+            }
+
             // 子要素を再帰的に追加
             if (item.Children != null && item.Children.Count > 0)
             {
-                var childViewModels = BuildViewModelHierarchy(item.Children.ToList());
+                var childViewModels = BuildViewModelHierarchy(item.Children.ToList(), checkItemDocuments);
                 foreach (var child in childViewModels)
                 {
                     viewModel.Children.Add(child);
@@ -104,6 +140,11 @@ public class CheckItemUIBuilder
         }
         else
         {
+            // 子要素がチェック項目のみかどうかを判定
+            var allChildrenAreItems = viewModel.Children.All(c => c.IsItem);
+            var allChildrenAreCategories = viewModel.Children.All(c => c.IsCategory);
+            var childCount = viewModel.Children.Count;
+
             // 分類の場合はGroupBoxを作成
             var groupBox = new GroupBox
             {
@@ -114,14 +155,10 @@ public class CheckItemUIBuilder
                     _settings.GroupBox.MarginRight,
                     _settings.GroupBox.MarginBottom),
                 Padding = new Thickness(_settings.GroupBox.Padding),
-                BorderBrush = GetBorderBrush(depth),
+                // チェックボックスを含むGroupBoxは常に小分類（Depth2）の色を使用
+                BorderBrush = allChildrenAreItems ? GetBorderBrush(2) : GetBorderBrush(depth),
                 BorderThickness = new Thickness(_settings.GroupBox.BorderThickness)
             };
-
-            // 子要素がチェック項目のみかどうかを判定
-            var allChildrenAreItems = viewModel.Children.All(c => c.IsItem);
-            var allChildrenAreCategories = viewModel.Children.All(c => c.IsCategory);
-            var childCount = viewModel.Children.Count;
 
             Panel containerPanel;
             bool isWrapPanel = false;
@@ -226,18 +263,65 @@ public class CheckItemUIBuilder
     }
 
     /// <summary>
-    /// チェック状態をDBに保存する
+    /// チェック状態をDBに保存する（Documentと紐づけて保存）
     /// </summary>
     private async Task SaveStatusAsync(CheckItemViewModel viewModel)
     {
         try
         {
-            _logger.LogInformation("チェック状態を保存: {Path} = {Status}", viewModel.Path, viewModel.Status);
+            if (_currentDocument == null)
+            {
+                // Documentが指定されていない場合は、CheckItemのStatusを更新
+                _logger.LogInformation("チェック状態を保存: {Path} = {Status}", viewModel.Path, viewModel.Status);
 
-            await _repository.UpdateAsync(viewModel.Entity);
-            await _repository.SaveChangesAsync();
+                await _repository.UpdateAsync(viewModel.Entity);
+                await _repository.SaveChangesAsync();
 
-            _logger.LogDebug("チェック状態の保存が完了しました");
+                _logger.LogDebug("チェック状態の保存が完了しました");
+            }
+            else
+            {
+                // Documentが指定されている場合は、CheckItemDocumentテーブルに保存
+                if (viewModel.IsChecked)
+                {
+                    // チェックONの場合：CheckItemDocumentに追加（既に存在する場合は何もしない）
+                    var existing = await _checkItemDocumentRepository.GetByDocumentAndCheckItemAsync(
+                        _currentDocument.Id,
+                        viewModel.Entity.Id);
+
+                    if (existing == null)
+                    {
+                        var checkItemDocument = new CheckItemDocument
+                        {
+                            DocumentId = _currentDocument.Id,
+                            CheckItemId = viewModel.Entity.Id,
+                            LinkedAt = DateTime.UtcNow
+                        };
+
+                        await _checkItemDocumentRepository.AddAsync(checkItemDocument);
+                        await _checkItemDocumentRepository.SaveChangesAsync();
+
+                        _logger.LogInformation("チェック項目を資料に紐づけました: Document={DocumentId}, CheckItem={CheckItemId} ({Path})",
+                            _currentDocument.Id, viewModel.Entity.Id, viewModel.Path);
+                    }
+                }
+                else
+                {
+                    // チェックOFFの場合：CheckItemDocumentから削除
+                    var existing = await _checkItemDocumentRepository.GetByDocumentAndCheckItemAsync(
+                        _currentDocument.Id,
+                        viewModel.Entity.Id);
+
+                    if (existing != null)
+                    {
+                        await _checkItemDocumentRepository.DeleteAsync(existing.Id);
+                        await _checkItemDocumentRepository.SaveChangesAsync();
+
+                        _logger.LogInformation("チェック項目の紐づけを解除しました: Document={DocumentId}, CheckItem={CheckItemId} ({Path})",
+                            _currentDocument.Id, viewModel.Entity.Id, viewModel.Path);
+                    }
+                }
+            }
         }
         catch (Exception ex)
         {

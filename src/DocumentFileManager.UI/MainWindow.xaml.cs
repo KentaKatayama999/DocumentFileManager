@@ -25,6 +25,9 @@ public partial class MainWindow : Window
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<MainWindow> _logger;
 
+    // チェックリストウィンドウ（シングルトン管理）
+    private ChecklistWindow? _checklistWindow;
+
     public MainWindow(
         IDocumentRepository documentRepository,
         ICheckItemRepository checkItemRepository,
@@ -317,7 +320,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 資料をダブルクリックで開く
+    /// 資料をダブルクリックで開く（ファイルとチェックリストウィンドウを同時に開く）
     /// </summary>
     private void DocumentsListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
@@ -352,12 +355,62 @@ public partial class MainWindow : Window
 
                 _logger.LogInformation("資料を開きました: {AbsolutePath}", absolutePath);
                 StatusText.Text = $"資料を開きました: {document.FileName}";
+
+                // チェックリストウィンドウを開く
+                OpenChecklistWindow(document);
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "資料を開く際にエラーが発生しました");
             MessageBox.Show($"資料を開く際にエラーが発生しました:\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
+    /// チェックリストウィンドウを開く
+    /// </summary>
+    private void OpenChecklistWindow(Document document)
+    {
+        try
+        {
+            // 既存のチェックリストウィンドウを閉じる
+            if (_checklistWindow != null)
+            {
+                _checklistWindow.Close();
+                _checklistWindow = null;
+            }
+
+            // 新規ウィンドウ作成
+            _logger.LogInformation("チェックリストウィンドウを作成します (Document: {FileName})", document.FileName);
+
+            var checkItemUIBuilder = _serviceProvider.GetRequiredService<CheckItemUIBuilder>();
+            var checklistLogger = _serviceProvider.GetRequiredService<ILogger<ChecklistWindow>>();
+            _checklistWindow = new ChecklistWindow(document, checkItemUIBuilder, checklistLogger)
+            {
+                Owner = null // Ownerを設定しない（MainWindowとの親子関係を切る）
+            };
+
+            // ウィンドウが閉じられたときの処理
+            _checklistWindow.Closed += (s, args) =>
+            {
+                _checklistWindow = null;
+                // MainWindowを再表示
+                Show();
+                Activate();
+                _logger.LogInformation("チェックリストウィンドウが閉じられました。MainWindowを再表示しました。");
+            };
+
+            // MainWindowを非表示にしてからChecklistWindowを表示
+            Hide();
+            _checklistWindow.Show();
+            _logger.LogInformation("チェックリストウィンドウを表示しました。MainWindowを非表示にしました。");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "チェックリストウィンドウの表示に失敗しました");
+            Show(); // エラー時はMainWindowを表示
+            MessageBox.Show($"チェックリストウィンドウの表示に失敗しました:\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 }
