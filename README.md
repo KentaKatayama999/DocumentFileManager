@@ -17,6 +17,7 @@
 - 📸 画面キャプチャの保存・関連付け
 - 🔍 資料の検索・フィルタリング
 - 💾 プロジェクト単位でのデータ保存（workspace.db）
+- 👁️ 統合ドキュメントビューア（画像、PDF、テキスト、Office、CAD、メールファイル対応）
 
 ## プロジェクト構成
 
@@ -30,18 +31,25 @@ DocumentFileManager/
 │   │   │   └── CheckItemDocument.cs     # 紐づけ管理
 │   │   └── ValueObjects/
 │   │       └── ItemStatus.cs            # 状態列挙型
-│   └── DocumentFileManager.Infrastructure/  # インフラ層（DB・リポジトリ）
-│       ├── Data/
-│       │   ├── DocumentManagerContext.cs     # EF Core DbContext
-│       │   └── DocumentManagerContextFactory.cs
-│       ├── Repositories/
-│       │   ├── ICheckItemRepository.cs
-│       │   ├── CheckItemRepository.cs
-│       │   ├── IDocumentRepository.cs
-│       │   ├── DocumentRepository.cs
-│       │   ├── ICheckItemDocumentRepository.cs
-│       │   └── CheckItemDocumentRepository.cs
-│       └── Migrations/                   # EF Core マイグレーション
+│   ├── DocumentFileManager.Infrastructure/  # インフラ層（DB・リポジトリ）
+│   │   ├── Data/
+│   │   │   ├── DocumentManagerContext.cs     # EF Core DbContext
+│   │   │   └── DocumentManagerContextFactory.cs
+│   │   ├── Repositories/
+│   │   │   ├── ICheckItemRepository.cs
+│   │   │   ├── CheckItemRepository.cs
+│   │   │   ├── IDocumentRepository.cs
+│   │   │   ├── DocumentRepository.cs
+│   │   │   ├── ICheckItemDocumentRepository.cs
+│   │   │   └── CheckItemDocumentRepository.cs
+│   │   └── Migrations/                   # EF Core マイグレーション
+│   ├── DocumentFileManager.UI/           # メインアプリケーション（WPF）
+│   └── DocumentFileManager.Viewer/       # ドキュメントビューア（スタンドアロン）
+│       ├── Viewers/                      # ビューアコントロール
+│       │   ├── ImageViewer.xaml         # 画像ビューア
+│       │   ├── TextViewer.xaml          # テキストビューア
+│       │   └── PdfViewer.xaml           # PDFビューア（WebView2）
+│       └── ViewerWindow.xaml            # ビューアウィンドウ
 ├── tests/
 │   └── DocumentFileManager.UI.Test/      # UI テストプロジェクト（WPF）
 ├── docs/                                 # 設計ドキュメント
@@ -50,6 +58,13 @@ DocumentFileManager/
 │   ├── ドメインモデル定義書.md
 │   ├── データ設計書.md
 │   └── 実装プラン.md
+├── test-files/                           # ビューアテスト用ファイル
+│   ├── images/                          # 画像ファイル
+│   ├── text/                            # テキストファイル
+│   ├── pdf/                             # PDFファイル
+│   ├── office/                          # Officeファイル
+│   ├── cad/                             # CADファイル
+│   └── email/                           # メールファイル
 └── dummy/                                # テスト用ダミーデータ
     ├── 設計書_rev1.pdf
     ├── 仕様書_最新版.pdf
@@ -165,6 +180,45 @@ SQLite データベース（`workspace.db`）に以下のテーブルを作成�
 - **依存性注入**: インターフェースベースの疎結合設計
 - **MVVM パターン**: UI とロジックの分離（WPF）
 
+## DocumentFileManager.Viewer
+
+統合ドキュメントビューアは、様々なファイル形式をシームレスに表示するスタンドアロンアプリケーションです。
+
+### 対応ファイル形式
+
+**内部ビューア表示:**
+- 📷 画像ファイル: `.png`, `.jpg`, `.jpeg`, `.gif`
+- 📝 テキストファイル: `.txt`, `.log`, `.csv`, `.md`
+- 📄 PDFファイル: `.pdf` (WebView2使用)
+
+**外部プログラム連携（自動ウィンドウ配置）:**
+- 📊 Officeファイル: `.doc`, `.docx`, `.xls`, `.xlsx`, `.xlsm`, `.ppt`, `.pptx`
+- 🔧 CADファイル: `.3dm`, `.sldprt`, `.sldasm`, `.dwg`, `.igs`, `.iges`
+- ✉️ メールファイル: `.msg`, `.eml`
+
+### 使用方法
+
+```bash
+# ビルド
+cd src/DocumentFileManager.Viewer
+dotnet build
+
+# 実行
+./bin/Debug/net9.0-windows/DocumentFileManager.Viewer.exe <ファイルパス>
+
+# 例
+./bin/Debug/net9.0-windows/DocumentFileManager.Viewer.exe "D:\documents\report.pdf"
+```
+
+### 特徴
+
+- **自動ウィンドウ配置**: 外部プログラムで開いたファイルを画面左2/3に自動配置
+- **ウィンドウハンドル取得**: 開いたファイルのウィンドウハンドルをプログラムから取得可能
+- **既存インスタンス対応**: Excel、PowerPoint、Word等の既存インスタンスを正しく検出
+- **固定ウィンドウ**: ビューアウィンドウは画面左端に固定（移動不可）
+
+詳細は [src/DocumentFileManager.Viewer/README.md](./src/DocumentFileManager.Viewer/README.md) を参照してください。
+
 ## 開発状況
 
 ### 完了
@@ -173,6 +227,7 @@ SQLite データベース（`workspace.db`）に以下のテーブルを作成�
 - ✅ EF Core マイグレーション作成
 - ✅ リポジトリパターン実装
 - ✅ テストデータ作成
+- ✅ DocumentFileManager.Viewer 実装
 
 ### 進行中
 - 🔄 依存性注入（DI）設定
