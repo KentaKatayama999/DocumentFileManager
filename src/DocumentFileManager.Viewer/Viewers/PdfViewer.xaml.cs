@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using Microsoft.Web.WebView2.Core;
 
 namespace DocumentFileManager.Viewer.Viewers;
 
@@ -23,7 +24,12 @@ public partial class PdfViewer : UserControl
     {
         try
         {
-            await WebView.EnsureCoreWebView2Async();
+            // WebView2の環境オプションを設定
+            var options = new CoreWebView2EnvironmentOptions();
+            options.AdditionalBrowserArguments = "--allow-file-access-from-files --disable-web-security";
+
+            var environment = await CoreWebView2Environment.CreateAsync(null, null, options);
+            await WebView.EnsureCoreWebView2Async(environment);
         }
         catch (Exception ex)
         {
@@ -47,8 +53,12 @@ public partial class PdfViewer : UserControl
             // WebView2の初期化を待つ
             await WebView.EnsureCoreWebView2Async();
 
+            // ローカルファイルパスをfile:// URIに変換
+            var uri = new Uri(filePath, UriKind.Absolute);
+            var fileUri = uri.AbsoluteUri;
+
             // PDFファイルをWebView2で開く
-            WebView.CoreWebView2.Navigate(filePath);
+            WebView.CoreWebView2.Navigate(fileUri);
         }
         catch (Exception ex)
         {

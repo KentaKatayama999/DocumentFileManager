@@ -73,6 +73,16 @@ public class CheckItemDocumentRepository : ICheckItemDocumentRepository
         }
     }
 
+    public async Task UpdateCaptureFileAsync(int checkItemDocumentId, string? captureFilePath)
+    {
+        var checkItemDocument = await _context.CheckItemDocuments.FindAsync(checkItemDocumentId);
+        if (checkItemDocument != null)
+        {
+            checkItemDocument.CaptureFile = captureFilePath;
+            _context.CheckItemDocuments.Update(checkItemDocument);
+        }
+    }
+
     public async Task<int> SaveChangesAsync()
     {
         return await _context.SaveChangesAsync();

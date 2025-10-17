@@ -12,6 +12,7 @@ namespace DocumentFileManager.UI.ViewModels;
 public class CheckItemViewModel : INotifyPropertyChanged
 {
     private bool _isChecked;
+    private string? _captureFilePath;
 
     /// <summary>チェック項目エンティティ</summary>
     public CheckItem Entity { get; }
@@ -45,6 +46,24 @@ public class CheckItemViewModel : INotifyPropertyChanged
 
     /// <summary>状態</summary>
     public ItemStatus Status => Entity.Status;
+
+    /// <summary>キャプチャ画像のファイルパス（相対パス）</summary>
+    public string? CaptureFilePath
+    {
+        get => _captureFilePath;
+        set
+        {
+            if (_captureFilePath != value)
+            {
+                _captureFilePath = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(HasCapture));
+            }
+        }
+    }
+
+    /// <summary>キャプチャ画像が存在するかどうか</summary>
+    public bool HasCapture => !string.IsNullOrEmpty(_captureFilePath);
 
     /// <summary>子要素のコレクション</summary>
     public ObservableCollection<CheckItemViewModel> Children { get; }

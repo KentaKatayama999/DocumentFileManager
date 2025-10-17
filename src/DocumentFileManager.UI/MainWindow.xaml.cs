@@ -1,11 +1,13 @@
 ﻿using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
 using DocumentFileManager.Entities;
 using DocumentFileManager.Infrastructure.Repositories;
 using DocumentFileManager.UI.Configuration;
 using DocumentFileManager.UI.Helpers;
+using DocumentFileManager.UI.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
@@ -24,9 +26,11 @@ public partial class MainWindow : Window
     private readonly PathSettings _pathSettings;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<MainWindow> _logger;
+    private readonly IDataIntegrityService _dataIntegrityService;
 
     // チェックリストウィンドウ（シングルトン管理）
     private ChecklistWindow? _checklistWindow;
+    private IntPtr _lastOpenedDocumentWindowHandle = IntPtr.Zero;
 
     public MainWindow(
         IDocumentRepository documentRepository,
@@ -35,6 +39,7 @@ public partial class MainWindow : Window
         UISettings uiSettings,
         PathSettings pathSettings,
         IServiceProvider serviceProvider,
+        IDataIntegrityService dataIntegrityService,
         ILogger<MainWindow> logger)
     {
         _documentRepository = documentRepository;
@@ -43,6 +48,7 @@ public partial class MainWindow : Window
         _uiSettings = uiSettings;
         _pathSettings = pathSettings;
         _serviceProvider = serviceProvider;
+        _dataIntegrityService = dataIntegrityService;
         _logger = logger;
 
         InitializeComponent();
@@ -135,6 +141,27 @@ public partial class MainWindow : Window
         Close();
     }
 
+    private void IntegrityCheckMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _logger.LogInformation("データ整合性チェックウィンドウを開きます");
+
+            var integrityLogger = _serviceProvider.GetRequiredService<ILogger<IntegrityReportWindow>>();
+            var integrityWindow = new IntegrityReportWindow(_dataIntegrityService, integrityLogger)
+            {
+                Owner = this
+            };
+
+            integrityWindow.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "データ整合性チェックウィンドウの表示に失敗しました");
+            MessageBox.Show($"データ整合性チェックウィンドウの表示に失敗しました:\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     /// <summary>
     /// プロジェクトルートディレクトリを取得
     /// </summary>
@@ -217,9 +244,37 @@ public partial class MainWindow : Window
                 return false;
             }
 
-            var relativePath = GetRelativePath(filePath);
+            var projectRoot = GetProjectRoot();
+            var documentsDir = Path.Combine(projectRoot, _pathSettings.DocumentsDirectory);
 
-            // 重複チェック
+            // DocumentsDirectoryが存在しない場合は作成
+            if (!Directory.Exists(documentsDir))
+            {
+                Directory.CreateDirectory(documentsDir);
+                _logger.LogInformation("資料保存ディレクトリを作成しました: {Path}", documentsDir);
+            }
+
+            // ファイル名と拡張子を取得
+            var fileName = Path.GetFileName(filePath);
+            var fileNameWithoutExt = Path.GetFileNameWithoutExtension(filePath);
+            var extension = Path.GetExtension(filePath);
+
+            // コピー先のパスを決定（重複があれば連番を追加）
+            var destFileName = fileName;
+            var destPath = Path.Combine(documentsDir, destFileName);
+            var counter = 1;
+
+            while (File.Exists(destPath))
+            {
+                destFileName = $"{fileNameWithoutExt}_{counter}{extension}";
+                destPath = Path.Combine(documentsDir, destFileName);
+                counter++;
+            }
+
+            // DocumentsDirectoryを基準とした相対パス
+            var relativePath = Path.Combine(_pathSettings.DocumentsDirectory, destFileName);
+
+            // 重複チェック（相対パスで）
             var existing = await _documentRepository.GetByRelativePathAsync(relativePath);
             if (existing != null)
             {
@@ -228,12 +283,26 @@ public partial class MainWindow : Window
                 return false;
             }
 
+            // DocumentsDirectoryにファイルをコピー（元のファイルと異なる場合のみ）
+            var sourceFullPath = Path.GetFullPath(filePath);
+            var destFullPath = Path.GetFullPath(destPath);
+
+            if (!string.Equals(sourceFullPath, destFullPath, StringComparison.OrdinalIgnoreCase))
+            {
+                File.Copy(filePath, destPath, overwrite: false);
+                _logger.LogInformation("ファイルをコピーしました: {Source} -> {Dest}", filePath, destPath);
+            }
+            else
+            {
+                _logger.LogInformation("ファイルは既にDocumentsDirectory内にあります: {Path}", filePath);
+            }
+
             // Document エンティティ作成
             var document = new Document
             {
-                FileName = Path.GetFileName(filePath),
+                FileName = destFileName,
                 RelativePath = relativePath,
-                FileType = Path.GetExtension(filePath),
+                FileType = extension,
                 AddedAt = DateTime.UtcNow
             };
 
@@ -331,7 +400,10 @@ public partial class MainWindow : Window
                 _logger.LogInformation("資料を開きます: {FileName}", document.FileName);
 
                 var projectRoot = GetProjectRoot();
+                _logger.LogInformation("プロジェクトルート: {ProjectRoot}", projectRoot);
+                _logger.LogInformation("相対パス: {RelativePath}", document.RelativePath);
                 var absolutePath = Path.Combine(projectRoot, document.RelativePath);
+                _logger.LogInformation("絶対パス: {AbsolutePath}", absolutePath);
 
                 // ファイル存在チェック
                 if (!File.Exists(absolutePath))
@@ -345,19 +417,34 @@ public partial class MainWindow : Window
                     return;
                 }
 
-                // 外部アプリケーションで開く
-                var processStartInfo = new ProcessStartInfo
+                // Viewerプロジェクトのパスを取得
+                var viewerPath = Path.Combine(
+                    AppDomain.CurrentDomain.BaseDirectory,
+                    "..", "..", "..", "..", "DocumentFileManager.Viewer", "bin", "Debug", "net9.0-windows",
+                    "DocumentFileManager.Viewer.exe");
+                viewerPath = Path.GetFullPath(viewerPath);
+
+                var extension = Path.GetExtension(absolutePath).ToLower();
+
+                // ViewerWindowを同じプロセス内で開く
+                _logger.LogInformation("ViewerWindowで開きます: {FilePath}", absolutePath);
+                var viewerWindow = new DocumentFileManager.Viewer.ViewerWindow(absolutePath);
+
+                // ファイルオープン完了イベントを購読
+                viewerWindow.FileOpened += (sender, windowHandle) =>
                 {
-                    FileName = absolutePath,
-                    UseShellExecute = true
+                    _lastOpenedDocumentWindowHandle = windowHandle;
+                    _logger.LogInformation("資料ウィンドウハンドルを取得: {Handle}", windowHandle);
+
+                    // サポート対象ファイルの場合のみChecklistWindowを開く
+                    if (IsSupportedByViewer(extension))
+                    {
+                        OpenChecklistWindow(document, windowHandle);
+                    }
                 };
-                Process.Start(processStartInfo);
 
-                _logger.LogInformation("資料を開きました: {AbsolutePath}", absolutePath);
-                StatusText.Text = $"資料を開きました: {document.FileName}";
-
-                // チェックリストウィンドウを開く
-                OpenChecklistWindow(document);
+                viewerWindow.Show();
+                StatusText.Text = $"Viewerで開きました: {document.FileName}";
             }
         }
         catch (Exception ex)
@@ -368,9 +455,29 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// Viewerで処理可能なファイル形式かどうかを判定
+    /// （Viewerで表示 または Windows標準プログラムで開く）
+    /// </summary>
+    private bool IsSupportedByViewer(string extension)
+    {
+        var supportedExtensions = new[]
+        {
+            // Viewerで表示
+            ".png", ".jpg", ".jpeg", ".gif",  // 画像
+            ".txt", ".log", ".csv", ".md",    // テキスト
+            // Windows標準プログラムで開く（ChecklistWindow連携）
+            ".pdf",                           // PDF
+            ".msg", ".eml",                   // Email
+            ".docx", ".doc", ".xlsx", ".xls", ".pptx", ".ppt",  // Office
+            ".3dm", ".sldprt", ".sldasm", ".dwg"  // CAD
+        };
+        return supportedExtensions.Contains(extension);
+    }
+
+    /// <summary>
     /// チェックリストウィンドウを開く
     /// </summary>
-    private void OpenChecklistWindow(Document document)
+    private void OpenChecklistWindow(Document document, IntPtr documentWindowHandle = default)
     {
         try
         {
@@ -382,11 +489,14 @@ public partial class MainWindow : Window
             }
 
             // 新規ウィンドウ作成
-            _logger.LogInformation("チェックリストウィンドウを作成します (Document: {FileName})", document.FileName);
+            _logger.LogInformation("チェックリストウィンドウを作成します (Document: {FileName}, WindowHandle: {Handle})",
+                document.FileName, documentWindowHandle);
 
             var checkItemUIBuilder = _serviceProvider.GetRequiredService<CheckItemUIBuilder>();
+            var checkItemDocumentRepository = _serviceProvider.GetRequiredService<ICheckItemDocumentRepository>();
+            var pathSettings = _serviceProvider.GetRequiredService<PathSettings>();
             var checklistLogger = _serviceProvider.GetRequiredService<ILogger<ChecklistWindow>>();
-            _checklistWindow = new ChecklistWindow(document, checkItemUIBuilder, checklistLogger)
+            _checklistWindow = new ChecklistWindow(document, checkItemUIBuilder, checkItemDocumentRepository, pathSettings, checklistLogger, documentWindowHandle)
             {
                 Owner = null // Ownerを設定しない（MainWindowとの親子関係を切る）
             };

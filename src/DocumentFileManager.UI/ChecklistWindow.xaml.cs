@@ -1,9 +1,16 @@
 using System;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Interop;
+using System.Windows.Media.Imaging;
 using DocumentFileManager.Entities;
+using DocumentFileManager.Infrastructure.Repositories;
+using DocumentFileManager.UI.Configuration;
 using DocumentFileManager.UI.Helpers;
+using DocumentFileManager.UI.Services;
+using DocumentFileManager.UI.ViewModels;
 using Microsoft.Extensions.Logging;
 
 namespace DocumentFileManager.UI;
@@ -28,20 +35,58 @@ public partial class ChecklistWindow : Window
         public int flags;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+    [DllImport("gdi32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DeleteObject(IntPtr hObject);
+
     private readonly CheckItemUIBuilder _checkItemUIBuilder;
+    private readonly ICheckItemDocumentRepository _checkItemDocumentRepository;
+    private readonly PathSettings _pathSettings;
     private readonly ILogger<ChecklistWindow> _logger;
     private readonly Document _document;
+    private readonly ScreenCaptureService _captureService;
     private bool _isDockingRight = true; // デフォルトは右端
     private bool _isAdjustingPosition = false; // 位置調整中フラグ
+    private IntPtr _documentWindowHandle = IntPtr.Zero; // 開いた資料のウィンドウハンドル
 
     public ChecklistWindow(
         Document document,
         CheckItemUIBuilder checkItemUIBuilder,
+        ICheckItemDocumentRepository checkItemDocumentRepository,
+        PathSettings pathSettings,
         ILogger<ChecklistWindow> logger)
+        : this(document, checkItemUIBuilder, checkItemDocumentRepository, pathSettings, logger, IntPtr.Zero)
+    {
+    }
+
+    public ChecklistWindow(
+        Document document,
+        CheckItemUIBuilder checkItemUIBuilder,
+        ICheckItemDocumentRepository checkItemDocumentRepository,
+        PathSettings pathSettings,
+        ILogger<ChecklistWindow> logger,
+        IntPtr documentWindowHandle)
     {
         _document = document;
         _checkItemUIBuilder = checkItemUIBuilder;
+        _checkItemDocumentRepository = checkItemDocumentRepository;
+        _pathSettings = pathSettings;
         _logger = logger;
+        _documentWindowHandle = documentWindowHandle;
+        _captureService = new ScreenCaptureService();
 
         InitializeComponent();
 
@@ -118,7 +163,8 @@ public partial class ChecklistWindow : Window
             _logger.LogInformation("チェック項目の読み込みを開始します (Document: {DocumentId})", _document.Id);
 
             // UIBuilderを使用してGroupBox階層を構築（Documentと紐づけて）
-            await _checkItemUIBuilder.BuildAsync(CheckItemsContainer, _document);
+            // キャプチャ要求デリゲートを渡す
+            await _checkItemUIBuilder.BuildAsync(CheckItemsContainer, _document, PerformCaptureForCheckItem);
 
             _logger.LogInformation("チェック項目の階層表示が完了しました");
         }
@@ -226,6 +272,245 @@ public partial class ChecklistWindow : Window
         finally
         {
             _isAdjustingPosition = false;
+        }
+    }
+
+    /// <summary>
+    /// キャプチャボタンクリック
+    /// </summary>
+    private void CaptureButton_Click(object sender, RoutedEventArgs e)
+    {
+        PerformCapture();
+    }
+
+    /// <summary>
+    /// キャプチャ処理を実行
+    /// </summary>
+    private void PerformCapture()
+    {
+        try
+        {
+            _logger.LogInformation("画面キャプチャを開始します（範囲選択モード）");
+
+            // 資料ウィンドウの範囲を取得して初期選択範囲として設定
+            ScreenCaptureOverlay overlay;
+            if (_documentWindowHandle != IntPtr.Zero && GetWindowRect(_documentWindowHandle, out RECT rect))
+            {
+                // ウィンドウの矩形領域を取得
+                var windowArea = new Rect(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
+                _logger.LogInformation("資料ウィンドウの範囲を初期選択: X={X}, Y={Y}, Width={Width}, Height={Height}",
+                    windowArea.X, windowArea.Y, windowArea.Width, windowArea.Height);
+                overlay = new ScreenCaptureOverlay(windowArea);
+            }
+            else
+            {
+                // ウィンドウハンドルがない場合は通常の範囲選択
+                _logger.LogInformation("資料ウィンドウハンドルがないため、手動範囲選択モードで開始");
+                overlay = new ScreenCaptureOverlay();
+            }
+
+            bool? result = overlay.ShowDialog();
+
+            if (result == true && overlay.SelectedArea.HasValue)
+            {
+                var selectedArea = overlay.SelectedArea.Value;
+                _logger.LogInformation("選択範囲: X={X}, Y={Y}, Width={Width}, Height={Height}",
+                    selectedArea.X, selectedArea.Y, selectedArea.Width, selectedArea.Height);
+
+                // 選択範囲をキャプチャ
+                var rectangle = new System.Drawing.Rectangle(
+                    (int)selectedArea.X,
+                    (int)selectedArea.Y,
+                    (int)selectedArea.Width,
+                    (int)selectedArea.Height);
+
+                using (var bitmap = CaptureRectangle(rectangle))
+                {
+                    // BitmapをBitmapSourceに変換
+                    var bitmapSource = ConvertBitmapToBitmapSource(bitmap);
+
+                    // プレビューウィンドウを表示
+                    var previewWindow = new ImagePreviewWindow(bitmapSource);
+                    bool? previewResult = previewWindow.ShowDialog();
+
+                    if (previewWindow.RecaptureRequested)
+                    {
+                        // 再キャプチャが要求された場合
+                        _logger.LogInformation("再キャプチャが要求されました");
+                        PerformCapture(); // 再帰呼び出し
+                    }
+                }
+
+                _logger.LogInformation("キャプチャ処理が完了しました");
+            }
+            else
+            {
+                _logger.LogInformation("キャプチャがキャンセルされました");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "キャプチャ処理中にエラーが発生しました");
+            MessageBox.Show(
+                $"キャプチャ処理中にエラーが発生しました:\n{ex.Message}",
+                "エラー",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
+    /// 指定された矩形領域をキャプチャ
+    /// </summary>
+    private System.Drawing.Bitmap CaptureRectangle(System.Drawing.Rectangle bounds)
+    {
+        var bitmap = new System.Drawing.Bitmap(bounds.Width, bounds.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+        using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
+        {
+            graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bounds.Size, System.Drawing.CopyPixelOperation.SourceCopy);
+        }
+
+        return bitmap;
+    }
+
+    /// <summary>
+    /// System.Drawing.BitmapをWPF BitmapSourceに変換
+    /// </summary>
+    private BitmapSource ConvertBitmapToBitmapSource(System.Drawing.Bitmap bitmap)
+    {
+        var hBitmap = bitmap.GetHbitmap();
+        try
+        {
+            return Imaging.CreateBitmapSourceFromHBitmap(
+                hBitmap,
+                IntPtr.Zero,
+                Int32Rect.Empty,
+                BitmapSizeOptions.FromEmptyOptions());
+        }
+        finally
+        {
+            DeleteObject(hBitmap);
+        }
+    }
+
+    /// <summary>
+    /// チェック項目に対してキャプチャ処理を実行
+    /// </summary>
+    private async Task PerformCaptureForCheckItem(CheckItemViewModel viewModel, UIElement checkBoxContainer)
+    {
+        try
+        {
+            _logger.LogInformation("チェック項目のキャプチャを開始: {Path}", viewModel.Path);
+
+            // プロジェクトルートを取得
+            var projectRoot = Path.Combine(
+                Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "",
+                "..", "..", "..", "..", "..");
+            projectRoot = Path.GetFullPath(projectRoot);
+
+            // キャプチャファイルパスを生成
+            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            var capturesDir = Path.Combine(projectRoot, _pathSettings.CapturesDirectory, $"document_{_document.Id}");
+            var fileName = $"checkitem_{viewModel.Entity.Id}_{timestamp}.png";
+            var relativePath = Path.Combine(_pathSettings.CapturesDirectory, $"document_{_document.Id}", fileName);
+            var absolutePath = Path.Combine(projectRoot, relativePath);
+
+            // ディレクトリが存在しない場合は作成
+            if (!Directory.Exists(capturesDir))
+            {
+                Directory.CreateDirectory(capturesDir);
+                _logger.LogInformation("キャプチャディレクトリを作成: {Path}", capturesDir);
+            }
+
+            // 範囲選択オーバーレイを表示
+            ScreenCaptureOverlay overlay;
+            if (_documentWindowHandle != IntPtr.Zero && GetWindowRect(_documentWindowHandle, out RECT rect))
+            {
+                var windowArea = new Rect(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
+                overlay = new ScreenCaptureOverlay(windowArea);
+            }
+            else
+            {
+                overlay = new ScreenCaptureOverlay();
+            }
+
+            bool? overlayResult = overlay.ShowDialog();
+
+            if (overlayResult == true && overlay.SelectedArea.HasValue)
+            {
+                var selectedArea = overlay.SelectedArea.Value;
+
+                // 選択範囲をキャプチャ
+                var rectangle = new System.Drawing.Rectangle(
+                    (int)selectedArea.X,
+                    (int)selectedArea.Y,
+                    (int)selectedArea.Width,
+                    (int)selectedArea.Height);
+
+                using (var bitmap = CaptureRectangle(rectangle))
+                {
+                    // BitmapをBitmapSourceに変換
+                    var bitmapSource = ConvertBitmapToBitmapSource(bitmap);
+
+                    // プレビューウィンドウを自動保存モードで表示
+                    var previewWindow = new ImagePreviewWindow(bitmapSource, absolutePath);
+                    bool? previewResult = previewWindow.ShowDialog();
+
+                    if (previewWindow.RecaptureRequested)
+                    {
+                        // 再キャプチャが要求された場合
+                        _logger.LogInformation("再キャプチャが要求されました");
+                        await PerformCaptureForCheckItem(viewModel, checkBoxContainer);
+                        return;
+                    }
+
+                    // 保存が成功した場合
+                    if (previewResult == true && !string.IsNullOrEmpty(previewWindow.SavedFilePath))
+                    {
+                        _logger.LogInformation("キャプチャ画像を保存: {Path}", relativePath);
+
+                        // ViewModelを更新
+                        viewModel.CaptureFilePath = relativePath;
+
+                        // DBを更新
+                        var linkedItem = await _checkItemDocumentRepository.GetByDocumentAndCheckItemAsync(
+                            _document.Id, viewModel.Entity.Id);
+
+                        if (linkedItem != null)
+                        {
+                            await _checkItemDocumentRepository.UpdateCaptureFileAsync(linkedItem.Id, relativePath);
+                            await _checkItemDocumentRepository.SaveChangesAsync();
+                            _logger.LogInformation("DB更新完了: CheckItemDocument.Id={Id}, CaptureFile={Path}",
+                                linkedItem.Id, relativePath);
+                        }
+
+                        // UIを更新（🖼️ボタンを表示）
+                        if (checkBoxContainer is StackPanel stackPanel)
+                        {
+                            // StackPanelの2番目の子要素がButton（🖼️）
+                            if (stackPanel.Children.Count >= 2 && stackPanel.Children[1] is Button imageButton)
+                            {
+                                imageButton.Visibility = Visibility.Visible;
+                                _logger.LogInformation("画像確認ボタンを表示");
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                _logger.LogInformation("キャプチャがキャンセルされました");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "チェック項目のキャプチャ処理中にエラーが発生しました");
+            MessageBox.Show(
+                $"キャプチャ処理中にエラーが発生しました:\n{ex.Message}",
+                "エラー",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
     }
 }

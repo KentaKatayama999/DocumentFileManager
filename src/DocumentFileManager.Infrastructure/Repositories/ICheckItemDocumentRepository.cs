@@ -28,6 +28,9 @@ public interface ICheckItemDocumentRepository
     /// <summary>チェック項目と資料の紐づけを削除</summary>
     Task DeleteLinkAsync(int checkItemId, int documentId);
 
+    /// <summary>キャプチャファイルパスを更新</summary>
+    Task UpdateCaptureFileAsync(int checkItemDocumentId, string? captureFilePath);
+
     /// <summary>変更を保存</summary>
     Task<int> SaveChangesAsync();
 }

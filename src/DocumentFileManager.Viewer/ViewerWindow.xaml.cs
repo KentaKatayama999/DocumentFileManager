@@ -19,6 +19,11 @@ public partial class ViewerWindow : Window
     private const int SWP_NOZORDER = 0x0004;
     private const int SWP_NOACTIVATE = 0x0010;
 
+    /// <summary>
+    /// ファイルが開かれたときに発生するイベント
+    /// </summary>
+    public event EventHandler<IntPtr>? FileOpened;
+
     [StructLayout(LayoutKind.Sequential)]
     private struct WINDOWPOS
     {
@@ -172,12 +177,24 @@ public partial class ViewerWindow : Window
         {
             // Viewerで表示
             LoadInViewer(filePath, extension);
+
+            // ViewerWindow自体のハンドルを使用
+            var hwndSource = PresentationSource.FromVisual(this) as HwndSource;
+            var handle = hwndSource?.Handle ?? IntPtr.Zero;
+            FileOpened?.Invoke(this, handle);
         }
         else if (ShouldOpenWithDefault(extension))
         {
-            // Windows標準プログラムで開く（Viewerウィンドウは閉じる）
-            OpenWithDefaultProgram(filePath);
-            Close();
+            // Windows標準プログラムで開く（Viewerウィンドウは最小化して保持）
+            _externalWindowHandle = OpenWithDefaultProgram(filePath);
+
+            // ウィンドウを非表示にして最小化
+            WindowState = WindowState.Minimized;
+            ShowInTaskbar = false;
+            Opacity = 0;
+
+            // ファイルオープン完了イベントを発生
+            FileOpened?.Invoke(this, _externalWindowHandle);
         }
         else
         {
@@ -193,10 +210,9 @@ public partial class ViewerWindow : Window
     /// </summary>
     private bool IsSupportedFile(string extension)
     {
-        // Viewerで表示するファイル形式
+        // Viewerで表示するファイル形式（画像とテキストのみ）
         return extension is ".png" or ".jpg" or ".jpeg" or ".gif"
-            or ".txt" or ".log" or ".csv" or ".md"
-            or ".pdf";
+            or ".txt" or ".log" or ".csv" or ".md";
     }
 
     /// <summary>
@@ -205,8 +221,9 @@ public partial class ViewerWindow : Window
     /// </summary>
     private bool ShouldOpenWithDefault(string extension)
     {
-        // Email, Office, CADファイル
-        return extension is ".msg" or ".eml"
+        // PDF, Email, Office, CADファイル
+        return extension is ".pdf"
+            or ".msg" or ".eml"
             or ".docx" or ".doc" or ".xlsx" or ".xls" or ".xlsm" or ".xlm" or ".pptx" or ".ppt"
             or ".3dm" or ".sldprt" or ".sldasm" or ".dwg" or ".igs" or ".iges";
     }

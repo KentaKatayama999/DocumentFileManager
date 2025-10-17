@@ -22,6 +22,9 @@
             <MenuItem Header="ファイル(_F)">
                 <MenuItem Header="終了(_X)" Click="ExitMenuItem_Click"/>
             </MenuItem>
+            <MenuItem Header="ツール(_T)">
+                <MenuItem Header="データ整合性チェック(_I)" Click="IntegrityCheckMenuItem_Click" InputGestureText="Ctrl+Shift+I"/>
+            </MenuItem>
             <MenuItem Header="設定(_S)">
                 <MenuItem Header="UI設定(_U)" Click="SettingsMenuItem_Click"/>
             </MenuItem>

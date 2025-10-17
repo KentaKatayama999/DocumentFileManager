@@ -1,0 +1,37 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build Release
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Publish UI Application
+        run: dotnet publish src/DocumentFileManager.UI/DocumentFileManager.UI.csproj -c Release -o ./publish/UI
+
+      - name: Publish Viewer Application
+        run: dotnet publish src/DocumentFileManager.Viewer/DocumentFileManager.Viewer.csproj -c Release -o ./publish/Viewer
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: false
+          prerelease: false

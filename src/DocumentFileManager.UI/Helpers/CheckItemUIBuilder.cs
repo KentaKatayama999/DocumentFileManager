@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -21,6 +22,7 @@ public class CheckItemUIBuilder
     private readonly UISettings _settings;
     private readonly ILogger<CheckItemUIBuilder> _logger;
     private Document? _currentDocument;
+    private Func<CheckItemViewModel, UIElement, Task>? _onCaptureRequested;
 
     public CheckItemUIBuilder(
         ICheckItemRepository repository,
@@ -39,9 +41,11 @@ public class CheckItemUIBuilder
     /// </summary>
     /// <param name="containerPanel">親となるPanel</param>
     /// <param name="document">紐づけるDocumentオブジェクト（nullの場合は全体表示）</param>
-    public async Task BuildAsync(Panel containerPanel, Document? document = null)
+    /// <param name="onCaptureRequested">キャプチャ要求時に呼び出されるデリゲート</param>
+    public async Task BuildAsync(Panel containerPanel, Document? document = null, Func<CheckItemViewModel, UIElement, Task>? onCaptureRequested = null)
     {
         _currentDocument = document;
+        _onCaptureRequested = onCaptureRequested;
 
         if (document != null)
         {
@@ -107,7 +111,9 @@ public class CheckItemUIBuilder
             if (checkItemDocuments != null && checkItemDocuments.TryGetValue(item.Id, out var linkedItem))
             {
                 viewModel.IsChecked = true; // 紐づけが存在する場合はチェック済みとする
-                _logger.LogDebug("紐づけデータからチェック状態を設定: {Path} = チェック済み", item.Path);
+                viewModel.CaptureFilePath = linkedItem.CaptureFile; // キャプチャファイルパスを設定
+                _logger.LogDebug("紐づけデータからチェック状態を設定: {Path} = チェック済み, Capture={CaptureFile}",
+                    item.Path, linkedItem.CaptureFile ?? "(なし)");
             }
 
             // 子要素を再帰的に追加
@@ -229,9 +235,9 @@ public class CheckItemUIBuilder
     }
 
     /// <summary>
-    /// CheckBoxを作成する
+    /// CheckBoxと画像確認ボタンを含むStackPanelを作成する
     /// </summary>
-    private CheckBox CreateCheckBox(CheckItemViewModel viewModel, int depth)
+    private UIElement CreateCheckBox(CheckItemViewModel viewModel, int depth)
     {
         var checkBox = new CheckBox
         {
@@ -246,11 +252,91 @@ public class CheckItemUIBuilder
             Tag = viewModel // ViewModelを保持
         };
 
+        // 画像確認ボタン（カメラ絵文字）
+        var imageButton = new Button
+        {
+            Content = "📷",
+            Width = 24,
+            Height = 20,
+            Margin = new Thickness(5, 0, 0, 0),
+            Visibility = viewModel.HasCapture ? Visibility.Visible : Visibility.Collapsed,
+            Tag = viewModel, // ViewModelを保持
+            FontSize = 11,
+            Background = new SolidColorBrush(Color.FromRgb(255, 220, 220)), // 薄い赤
+            BorderBrush = new SolidColorBrush(Color.FromRgb(200, 160, 160)), // 薄い赤茶
+            BorderThickness = new Thickness(1),
+            Cursor = System.Windows.Input.Cursors.Hand, // ホバー時に手のカーソル
+            Padding = new Thickness(1),
+            VerticalContentAlignment = VerticalAlignment.Center,
+            HorizontalContentAlignment = HorizontalAlignment.Center
+        };
+
+        // 画像確認ボタンクリック
+        imageButton.Click += (sender, e) =>
+        {
+            if (viewModel.CaptureFilePath != null && _currentDocument != null)
+            {
+                var absolutePath = Path.Combine(
+                    Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "",
+                    "..", "..", "..", "..", "..",
+                    viewModel.CaptureFilePath);
+                absolutePath = Path.GetFullPath(absolutePath);
+
+                _logger.LogInformation("キャプチャ画像を表示: {Path}", absolutePath);
+
+                var viewer = new CaptureImageViewerWindow(absolutePath, null);
+                bool? result = viewer.ShowDialog();
+
+                // 削除された場合はボタンを非表示にする
+                if (viewer.IsDeleted)
+                {
+                    viewModel.CaptureFilePath = null;
+                    imageButton.Visibility = Visibility.Collapsed;
+
+                    // DBも更新（非同期処理を同期的に実行）
+                    Task.Run(async () =>
+                    {
+                        var linkedItem = await _checkItemDocumentRepository.GetByDocumentAndCheckItemAsync(
+                            _currentDocument.Id, viewModel.Entity.Id);
+                        if (linkedItem != null)
+                        {
+                            await _checkItemDocumentRepository.UpdateCaptureFileAsync(linkedItem.Id, null);
+                            await _checkItemDocumentRepository.SaveChangesAsync();
+                        }
+                    }).Wait();
+                }
+            }
+        };
+
+        // StackPanelにCheckBoxとボタンを配置
+        var stackPanel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Tag = new { CheckBox = checkBox, ImageButton = imageButton, ViewModel = viewModel }
+        };
+        stackPanel.Children.Add(checkBox);
+        stackPanel.Children.Add(imageButton);
+
         // チェック状態変更イベント
         checkBox.Checked += async (sender, e) =>
         {
             viewModel.IsChecked = true;
             await SaveStatusAsync(viewModel);
+
+            // Documentが指定されている場合、キャプチャを取得するか確認
+            if (_currentDocument != null && _onCaptureRequested != null)
+            {
+                var result = MessageBox.Show(
+                    "この箇所のキャプチャを取得しますか？",
+                    "キャプチャ確認",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    await _onCaptureRequested(viewModel, stackPanel);
+                }
+            }
         };
 
         checkBox.Unchecked += async (sender, e) =>
@@ -259,7 +345,7 @@ public class CheckItemUIBuilder
             await SaveStatusAsync(viewModel);
         };
 
-        return checkBox;
+        return stackPanel;
     }
 
     /// <summary>

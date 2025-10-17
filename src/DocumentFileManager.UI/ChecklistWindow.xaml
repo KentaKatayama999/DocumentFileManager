@@ -36,7 +36,13 @@
                 <Button x:Name="DockRightButton"
                         Content="右に配置"
                         Padding="10,5"
+                        Margin="0,0,5,0"
                         Click="DockRightButton_Click"/>
+                <Button x:Name="CaptureButton"
+                        Content="📸 キャプチャ"
+                        Padding="10,5"
+                        Click="CaptureButton_Click"
+                        ToolTip="アクティブウィンドウをキャプチャして保存"/>
             </StackPanel>
         </Border>
 

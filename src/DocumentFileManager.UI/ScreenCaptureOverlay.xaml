@@ -1,0 +1,22 @@
+<Window x:Class="DocumentFileManager.UI.ScreenCaptureOverlay"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="範囲選択"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="#40000000"
+        WindowState="Maximized"
+        Topmost="True"
+        Cursor="Cross"
+        MouseDown="Window_MouseDown"
+        MouseMove="Window_MouseMove"
+        MouseUp="Window_MouseUp"
+        KeyDown="Window_KeyDown">
+    <Canvas x:Name="SelectionCanvas">
+        <Rectangle x:Name="SelectionRectangle"
+                   Stroke="Red"
+                   StrokeThickness="2"
+                   Fill="#30FF0000"
+                   Visibility="Collapsed"/>
+    </Canvas>
+</Window>

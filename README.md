@@ -1,5 +1,8 @@
 # 資料保存アプリ (Document File Manager)
 
+[![CI/CD Pipeline](https://github.com/YOUR_USERNAME/DocumentFileManager/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/DocumentFileManager/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/YOUR_USERNAME/DocumentFileManager/branch/main/graph/badge.svg)](https://codecov.io/gh/YOUR_USERNAME/DocumentFileManager)
+
 技術資料（PDF等）とチェックリスト項目を統合管理し、資料と作業進捗を紐づけて可視化するWPFデスクトップアプリケーションです。
 
 ## 概要
