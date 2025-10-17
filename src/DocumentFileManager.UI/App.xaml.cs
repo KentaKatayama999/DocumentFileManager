@@ -4,6 +4,7 @@ using DocumentFileManager.Infrastructure.Data;
 using DocumentFileManager.Infrastructure.Repositories;
 using DocumentFileManager.UI.Configuration;
 using DocumentFileManager.UI.Helpers;
+using DocumentFileManager.UI.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -97,6 +98,9 @@ public partial class App : Application
                 services.AddScoped<ICheckItemRepository, CheckItemRepository>();
                 services.AddScoped<IDocumentRepository, DocumentRepository>();
                 services.AddScoped<ICheckItemDocumentRepository, CheckItemDocumentRepository>();
+
+                // サービスの登録
+                services.AddScoped<IDataIntegrityService, DataIntegrityService>();
 
                 // UIヘルパーの登録
                 services.AddScoped<CheckItemUIBuilder>();

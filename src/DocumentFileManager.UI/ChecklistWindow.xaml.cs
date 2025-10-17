@@ -52,6 +52,11 @@ public partial class ChecklistWindow : Window
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool DeleteObject(IntPtr hObject);
 
+    [DllImport("user32.dll")]
+    private static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+    private const uint WM_CLOSE = 0x0010;
+
     private readonly CheckItemUIBuilder _checkItemUIBuilder;
     private readonly ICheckItemDocumentRepository _checkItemDocumentRepository;
     private readonly PathSettings _pathSettings;
@@ -105,6 +110,9 @@ public partial class ChecklistWindow : Window
 
         // 位置と高さを固定するためのイベントハンドラ
         SizeChanged += ChecklistWindow_SizeChanged;
+
+        // ウィンドウが閉じられたときに資料ウィンドウも閉じる
+        Closed += ChecklistWindow_Closed;
 
         _logger.LogInformation("ChecklistWindow が初期化されました (Document: {FileName})", _document.FileName);
     }
@@ -511,6 +519,25 @@ public partial class ChecklistWindow : Window
                 "エラー",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
+    /// ウィンドウが閉じられたときに資料ウィンドウも閉じる
+    /// </summary>
+    private void ChecklistWindow_Closed(object? sender, EventArgs e)
+    {
+        try
+        {
+            if (_documentWindowHandle != IntPtr.Zero)
+            {
+                _logger.LogInformation("資料ウィンドウを閉じます (Handle: {Handle})", _documentWindowHandle);
+                PostMessage(_documentWindowHandle, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "資料ウィンドウを閉じる際にエラーが発生しました");
         }
     }
 }

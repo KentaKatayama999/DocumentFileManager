@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 using DocumentFileManager.Entities;
 using DocumentFileManager.Infrastructure.Repositories;
 using DocumentFileManager.UI.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Serilog;
 
 namespace DocumentFileManager.UI.Services
 {
@@ -20,7 +20,7 @@ namespace DocumentFileManager.UI.Services
         private readonly IDocumentRepository _documentRepository;
         private readonly ICheckItemDocumentRepository _checkItemDocumentRepository;
         private readonly PathSettings _pathSettings;
-        private readonly ILogger _logger;
+        private readonly ILogger<DataIntegrityService> _logger;
         private readonly string _projectRoot;
 
         /// <summary>
@@ -30,7 +30,7 @@ namespace DocumentFileManager.UI.Services
             IDocumentRepository documentRepository,
             ICheckItemDocumentRepository checkItemDocumentRepository,
             IOptions<PathSettings> pathSettings,
-            ILogger logger)
+            ILogger<DataIntegrityService> logger)
         {
             _documentRepository = documentRepository ?? throw new ArgumentNullException(nameof(documentRepository));
             _checkItemDocumentRepository = checkItemDocumentRepository ?? throw new ArgumentNullException(nameof(checkItemDocumentRepository));
@@ -56,7 +56,7 @@ namespace DocumentFileManager.UI.Services
         /// </summary>
         public async Task<IntegrityReport> CheckIntegrityAsync()
         {
-            _logger.Information("データ整合性チェックを開始します");
+            _logger.LogInformation("データ整合性チェックを開始します");
 
             var report = new IntegrityReport
             {
@@ -65,13 +65,13 @@ namespace DocumentFileManager.UI.Services
 
             try
             {
-                // 物理ファイルが見つからない資料を検索
+                // 物理ファイルが見つからない文書を検索
                 report.MissingFiles = await FindMissingFilesAsync();
 
                 // 孤立したキャプチャ画像を検索
                 report.OrphanedCaptures = await FindOrphanedCapturesAsync();
 
-                _logger.Information(
+                _logger.LogInformation(
                     "データ整合性チェック完了: 見つからないファイル={MissingCount}件, 孤立キャプチャ={OrphanedCount}件",
                     report.MissingFiles.Count,
                     report.OrphanedCaptures.Count);
@@ -80,17 +80,17 @@ namespace DocumentFileManager.UI.Services
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "データ整合性チェック中にエラーが発生しました");
+                _logger.LogError(ex, "データ整合性チェック中にエラーが発生しました");
                 throw;
             }
         }
 
         /// <summary>
-        /// 物理ファイルが見つからない資料を検索する
+        /// 物理ファイルが見つからない文書を検索する
         /// </summary>
         public async Task<List<Document>> FindMissingFilesAsync()
         {
-            _logger.Debug("物理ファイルが見つからない資料を検索中...");
+            _logger.LogDebug("物理ファイルが見つからない文書を検索中...");
 
             var allDocuments = await _documentRepository.GetAllAsync();
             var missingFiles = new List<Document>();
@@ -100,12 +100,12 @@ namespace DocumentFileManager.UI.Services
                 var absolutePath = doc.GetAbsolutePath(_projectRoot);
                 if (!File.Exists(absolutePath))
                 {
-                    _logger.Warning("資料ファイルが見つかりません: {FilePath} (ID={Id})", absolutePath, doc.Id);
+                    _logger.LogWarning("文書ファイルが見つかりません: {FilePath} (ID={Id})", absolutePath, doc.Id);
                     missingFiles.Add(doc);
                 }
             }
 
-            _logger.Debug("見つからない資料ファイル: {Count}件", missingFiles.Count);
+            _logger.LogDebug("見つからない文書ファイル: {Count}件", missingFiles.Count);
             return missingFiles;
         }
 
@@ -114,7 +114,7 @@ namespace DocumentFileManager.UI.Services
         /// </summary>
         public async Task<List<string>> FindOrphanedCapturesAsync()
         {
-            _logger.Debug("孤立したキャプチャ画像を検索中...");
+            _logger.LogDebug("孤立したキャプチャ画像を検索中...");
 
             var orphanedCaptures = new List<string>();
             var capturesDirectory = Path.Combine(_projectRoot, _pathSettings.CapturesDirectory);
@@ -122,13 +122,13 @@ namespace DocumentFileManager.UI.Services
             // capturesディレクトリが存在しない場合は空リストを返す
             if (!Directory.Exists(capturesDirectory))
             {
-                _logger.Debug("キャプチャディレクトリが存在しません: {Path}", capturesDirectory);
+                _logger.LogDebug("キャプチャディレクトリが存在しません: {Path}", capturesDirectory);
                 return orphanedCaptures;
             }
 
             // すべてのキャプチャファイルを取得
             var captureFiles = Directory.GetFiles(capturesDirectory, "*.png", SearchOption.AllDirectories);
-            _logger.Debug("キャプチャファイル総数: {Count}件", captureFiles.Length);
+            _logger.LogDebug("キャプチャファイル総数: {Count}件", captureFiles.Length);
 
             // DBに登録されているキャプチャファイルのセットを作成
             var allDocuments = await _documentRepository.GetAllAsync();
@@ -155,12 +155,12 @@ namespace DocumentFileManager.UI.Services
             {
                 if (!registeredCaptures.Contains(captureFile))
                 {
-                    _logger.Warning("孤立したキャプチャファイル: {FilePath}", captureFile);
+                    _logger.LogWarning("孤立したキャプチャファイル: {FilePath}", captureFile);
                     orphanedCaptures.Add(captureFile);
                 }
             }
 
-            _logger.Debug("孤立したキャプチャ画像: {Count}件", orphanedCaptures.Count);
+            _logger.LogDebug("孤立したキャプチャ画像: {Count}件", orphanedCaptures.Count);
             return orphanedCaptures;
         }
 
@@ -179,30 +179,30 @@ namespace DocumentFileManager.UI.Services
                 throw new ArgumentNullException(nameof(options));
             }
 
-            _logger.Information("データ整合性修復を開始します");
+            _logger.LogInformation("データ整合性修復を開始します");
 
             try
             {
-                // 見つからない資料ファイルのDBレコードを削除
+                // 見つからない文書ファイルのDBレコードを削除
                 if (options.RemoveMissingDocuments && report.MissingFiles.Count > 0)
                 {
-                    _logger.Information("見つからない資料ファイルのレコードを削除します: {Count}件", report.MissingFiles.Count);
+                    _logger.LogInformation("見つからない文書ファイルのレコードを削除します: {Count}件", report.MissingFiles.Count);
 
                     foreach (var doc in report.MissingFiles)
                     {
                         // 関連するCheckItemDocumentも削除される（カスケード削除）
                         await _documentRepository.DeleteAsync(doc.Id);
-                        _logger.Debug("資料を削除しました: ID={Id}, RelativePath={RelativePath}", doc.Id, doc.RelativePath);
+                        _logger.LogDebug("文書を削除しました: ID={Id}, RelativePath={RelativePath}", doc.Id, doc.RelativePath);
                     }
 
                     await _documentRepository.SaveChangesAsync();
-                    _logger.Information("見つからない資料ファイルのレコード削除完了");
+                    _logger.LogInformation("見つからない文書ファイルのレコード削除完了");
                 }
 
                 // 孤立したキャプチャ画像を削除
                 if (options.RemoveOrphanedCaptures && report.OrphanedCaptures.Count > 0)
                 {
-                    _logger.Information("孤立したキャプチャ画像を削除します: {Count}件", report.OrphanedCaptures.Count);
+                    _logger.LogInformation("孤立したキャプチャ画像を削除します: {Count}件", report.OrphanedCaptures.Count);
 
                     foreach (var captureFile in report.OrphanedCaptures)
                     {
@@ -211,23 +211,23 @@ namespace DocumentFileManager.UI.Services
                             if (File.Exists(captureFile))
                             {
                                 File.Delete(captureFile);
-                                _logger.Debug("孤立キャプチャを削除しました: {FilePath}", captureFile);
+                                _logger.LogDebug("孤立キャプチャを削除しました: {FilePath}", captureFile);
                             }
                         }
                         catch (Exception ex)
                         {
-                            _logger.Warning(ex, "孤立キャプチャの削除に失敗しました: {FilePath}", captureFile);
+                            _logger.LogWarning(ex, "孤立キャプチャの削除に失敗しました: {FilePath}", captureFile);
                         }
                     }
 
-                    _logger.Information("孤立したキャプチャ画像の削除完了");
+                    _logger.LogInformation("孤立したキャプチャ画像の削除完了");
                 }
 
-                _logger.Information("データ整合性修復が完了しました");
+                _logger.LogInformation("データ整合性修復が完了しました");
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "データ整合性修復中にエラーが発生しました");
+                _logger.LogError(ex, "データ整合性修復中にエラーが発生しました");
                 throw;
             }
         }
