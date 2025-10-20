@@ -31,6 +31,7 @@ public partial class MainWindow : Window
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<MainWindow> _logger;
     private readonly IDataIntegrityService _dataIntegrityService;
+    private readonly string _documentRootPath;
 
     // チェックリストウィンドウ（シングルトン管理）
     private ChecklistWindow? _checklistWindow;
@@ -49,7 +50,8 @@ public partial class MainWindow : Window
         PathSettings pathSettings,
         IServiceProvider serviceProvider,
         IDataIntegrityService dataIntegrityService,
-        ILogger<MainWindow> logger)
+        ILogger<MainWindow> logger,
+        string documentRootPath)
     {
         _documentRepository = documentRepository;
         _checkItemRepository = checkItemRepository;
@@ -59,6 +61,7 @@ public partial class MainWindow : Window
         _serviceProvider = serviceProvider;
         _dataIntegrityService = dataIntegrityService;
         _logger = logger;
+        _documentRootPath = documentRootPath;
 
         InitializeComponent();
 
@@ -196,7 +199,7 @@ public partial class MainWindow : Window
             // SettingsWindowをDIコンテナから取得
             var pathSettings = _serviceProvider.GetRequiredService<PathSettings>();
             var settingsLogger = _serviceProvider.GetRequiredService<ILogger<SettingsWindow>>();
-            var settingsWindow = new SettingsWindow(_uiSettings, pathSettings, settingsLogger)
+            var settingsWindow = new SettingsWindow(_uiSettings, pathSettings, settingsLogger, _documentRootPath)
             {
                 Owner = this
             };
@@ -244,13 +247,11 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// プロジェクトルートディレクトリを取得
+    /// ドキュメントルートディレクトリを取得
     /// </summary>
     private string GetProjectRoot()
     {
-        var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-        var pathSegments = Enumerable.Repeat("..", _pathSettings.ProjectRootLevelsUp).ToArray();
-        return Path.GetFullPath(Path.Combine(new[] { baseDirectory }.Concat(pathSegments).ToArray()));
+        return _documentRootPath;
     }
 
     /// <summary>
@@ -326,15 +327,8 @@ public partial class MainWindow : Window
             }
 
             var projectRoot = GetProjectRoot();
-            var documentsDir = Path.Combine(projectRoot, _pathSettings.DocumentsDirectory);
 
-            // DocumentsDirectoryが存在しない場合は作成
-            if (!Directory.Exists(documentsDir))
-            {
-                Directory.CreateDirectory(documentsDir);
-                _logger.LogInformation("資料保存ディレクトリを作成しました: {Path}", documentsDir);
-            }
-
+            // documentRootPath 配下に直接ファイルを配置
             // ファイル名と拡張子を取得
             var fileName = Path.GetFileName(filePath);
             var fileNameWithoutExt = Path.GetFileNameWithoutExtension(filePath);
@@ -342,13 +336,13 @@ public partial class MainWindow : Window
 
             // コピー先のパスを決定（重複があれば連番を追加）
             var destFileName = fileName;
-            var destPath = Path.Combine(documentsDir, destFileName);
+            var destPath = Path.Combine(projectRoot, destFileName);
             var counter = 1;
 
             while (File.Exists(destPath))
             {
                 destFileName = $"{fileNameWithoutExt}_{counter}{extension}";
-                destPath = Path.Combine(documentsDir, destFileName);
+                destPath = Path.Combine(projectRoot, destFileName);
                 counter++;
             }
 
@@ -364,7 +358,7 @@ public partial class MainWindow : Window
                 return false;
             }
 
-            // DocumentsDirectoryにファイルをコピー（元のファイルと異なる場合のみ）
+            // documentRootPathにファイルをコピー（元のファイルと異なる場合のみ）
             var sourceFullPath = Path.GetFullPath(filePath);
             var destFullPath = Path.GetFullPath(destPath);
 
@@ -375,7 +369,7 @@ public partial class MainWindow : Window
             }
             else
             {
-                _logger.LogInformation("ファイルは既にDocumentsDirectory内にあります: {Path}", filePath);
+                _logger.LogInformation("ファイルは既にdocumentRoot内にあります: {Path}", filePath);
             }
 
             // Document エンティティ作成
@@ -482,32 +476,18 @@ public partial class MainWindow : Window
 
                 var projectRoot = GetProjectRoot();
                 _logger.LogInformation("プロジェクトルート: {ProjectRoot}", projectRoot);
-                _logger.LogInformation("DocumentsDirectory: {DocumentsDirectory}", _pathSettings.DocumentsDirectory);
                 _logger.LogInformation("RelativePath (DB保存値): {RelativePath}", document.RelativePath);
 
-                // パス構築（既存データの互換性対応）
-                string absolutePath;
-
-                // 新形式: ファイル名のみが保存されている場合
-                if (!document.RelativePath.Contains("\\") && !document.RelativePath.Contains("/"))
-                {
-                    // プロジェクトルート + DocumentsDirectory + ファイル名 でパス構築
-                    absolutePath = Path.Combine(projectRoot, _pathSettings.DocumentsDirectory, document.RelativePath);
-                    _logger.LogInformation("新形式パス構築: {AbsolutePath}", absolutePath);
-                }
-                // 旧形式: test-files/ファイル名 などが保存されている場合（互換性対応）
-                else
-                {
-                    absolutePath = Path.Combine(projectRoot, document.RelativePath);
-                    _logger.LogInformation("旧形式パス構築（互換性モード）: {AbsolutePath}", absolutePath);
-                }
+                // パス構築: documentRootPath + RelativePath（通常はファイル名のみ）
+                var absolutePath = Path.Combine(projectRoot, document.RelativePath);
+                _logger.LogInformation("絶対パス構築: {AbsolutePath}", absolutePath);
 
                 // ファイル存在チェック
                 if (!File.Exists(absolutePath))
                 {
                     _logger.LogWarning("ファイルが見つかりません: {AbsolutePath}", absolutePath);
                     MessageBox.Show(
-                        $"ファイルが見つかりません:\n{document.RelativePath}\n\n絶対パス: {absolutePath}\n\nプロジェクトルート: {projectRoot}\nDocumentsDirectory: {_pathSettings.DocumentsDirectory}",
+                        $"ファイルが見つかりません:\n{document.RelativePath}\n\n絶対パス: {absolutePath}\n\nプロジェクトルート: {projectRoot}",
                         "エラー",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error);
@@ -591,9 +571,11 @@ public partial class MainWindow : Window
 
             var checkItemUIBuilder = _serviceProvider.GetRequiredService<CheckItemUIBuilder>();
             var checkItemDocumentRepository = _serviceProvider.GetRequiredService<ICheckItemDocumentRepository>();
+            var checkItemRepository = _serviceProvider.GetRequiredService<ICheckItemRepository>();
+            var checklistSaver = _serviceProvider.GetRequiredService<Infrastructure.Services.ChecklistSaver>();
             var pathSettings = _serviceProvider.GetRequiredService<PathSettings>();
             var checklistLogger = _serviceProvider.GetRequiredService<ILogger<ChecklistWindow>>();
-            _checklistWindow = new ChecklistWindow(document, checkItemUIBuilder, checkItemDocumentRepository, pathSettings, checklistLogger, documentWindowHandle)
+            _checklistWindow = new ChecklistWindow(document, checkItemUIBuilder, checkItemDocumentRepository, checkItemRepository, checklistSaver, pathSettings, checklistLogger, documentWindowHandle)
             {
                 Owner = null // Ownerを設定しない（MainWindowとの親子関係を切る）
             };

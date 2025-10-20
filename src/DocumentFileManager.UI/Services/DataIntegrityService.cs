@@ -30,25 +30,14 @@ namespace DocumentFileManager.UI.Services
             IDocumentRepository documentRepository,
             ICheckItemDocumentRepository checkItemDocumentRepository,
             IOptions<PathSettings> pathSettings,
-            ILogger<DataIntegrityService> logger)
+            ILogger<DataIntegrityService> logger,
+            string documentRootPath)
         {
             _documentRepository = documentRepository ?? throw new ArgumentNullException(nameof(documentRepository));
             _checkItemDocumentRepository = checkItemDocumentRepository ?? throw new ArgumentNullException(nameof(checkItemDocumentRepository));
             _pathSettings = pathSettings?.Value ?? throw new ArgumentNullException(nameof(pathSettings));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-
-            // プロジェクトルートパスを計算
-            var currentDir = AppDomain.CurrentDomain.BaseDirectory;
-            var levelsUp = _pathSettings.ProjectRootLevelsUp;
-            _projectRoot = currentDir;
-            for (int i = 0; i < levelsUp; i++)
-            {
-                var parent = Directory.GetParent(_projectRoot);
-                if (parent != null)
-                {
-                    _projectRoot = parent.FullName;
-                }
-            }
+            _projectRoot = documentRootPath ?? throw new ArgumentNullException(nameof(documentRootPath));
         }
 
         /// <summary>

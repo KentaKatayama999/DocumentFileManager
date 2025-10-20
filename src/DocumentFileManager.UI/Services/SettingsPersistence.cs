@@ -57,9 +57,7 @@ public class SettingsPersistence
                 { "ChecklistFile", pathSettings.ChecklistFile },
                 { "SelectedChecklistFile", pathSettings.SelectedChecklistFile },
                 { "SettingsFile", pathSettings.SettingsFile },
-                { "CapturesDirectory", pathSettings.CapturesDirectory },
-                { "DocumentsDirectory", pathSettings.DocumentsDirectory },
-                { "ProjectRootLevelsUp", pathSettings.ProjectRootLevelsUp }
+                { "CapturesDirectory", pathSettings.CapturesDirectory }
             };
 
             // JSONに書き込み

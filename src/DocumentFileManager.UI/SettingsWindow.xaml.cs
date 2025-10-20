@@ -15,12 +15,14 @@ public partial class SettingsWindow : Window
     private readonly UISettings _settings;
     private readonly PathSettings _pathSettings;
     private readonly ILogger<SettingsWindow> _logger;
+    private readonly string _documentRootPath;
 
-    public SettingsWindow(UISettings settings, PathSettings pathSettings, ILogger<SettingsWindow> logger)
+    public SettingsWindow(UISettings settings, PathSettings pathSettings, ILogger<SettingsWindow> logger, string documentRootPath)
     {
         _settings = settings;
         _pathSettings = pathSettings;
         _logger = logger;
+        _documentRootPath = documentRootPath;
 
         InitializeComponent();
 
@@ -128,13 +130,8 @@ public partial class SettingsWindow : Window
         {
             _logger.LogInformation("チェックリスト変更ボタンがクリックされました");
 
-            // プロジェクトルートを取得
-            var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-            var pathSegments = Enumerable.Repeat("..", _pathSettings.ProjectRootLevelsUp).ToArray();
-            var projectRoot = Path.GetFullPath(Path.Combine(new[] { baseDirectory }.Concat(pathSegments).ToArray()));
-
             // チェックリスト選択ダイアログを表示
-            var selectionDialog = new ChecklistSelectionDialog(projectRoot)
+            var selectionDialog = new ChecklistSelectionDialog(_documentRootPath)
             {
                 Owner = this
             };

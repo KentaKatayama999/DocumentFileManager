@@ -31,3 +31,6 @@ Logs/
 *.coverage*
 coverage/
 .temp/
+
+# Personal settings
+appsettings.local.json

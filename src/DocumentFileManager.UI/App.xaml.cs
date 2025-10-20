@@ -24,17 +24,37 @@ public partial class App : Application
 
     public App()
     {
+        // コマンドライン引数からdocumentRootPathを取得
+        var args = Environment.GetCommandLineArgs();
+        string documentRootPath;
+
+        if (args.Length > 1 && !string.IsNullOrWhiteSpace(args[1]))
+        {
+            // コマンドライン引数で指定された場合
+            documentRootPath = Path.GetFullPath(args[1]);
+            Log.Information("コマンドライン引数からdocumentRootPathを取得: {DocumentRootPath}", documentRootPath);
+        }
+        else
+        {
+            // 引数がない場合はデフォルト（開発用：プロジェクトルートから5階層上）
+            var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            var pathSegments = Enumerable.Repeat("..", 5).ToArray();
+            documentRootPath = Path.GetFullPath(Path.Combine(new[] { baseDirectory }.Concat(pathSegments).ToArray()));
+            Log.Warning("コマンドライン引数がありません。デフォルトパスを使用: {DocumentRootPath}", documentRootPath);
+        }
+
         // PathSettings を読み込み（早期に必要なため、Host.CreateDefaultBuilder前に読み込み）
         var configuration = new ConfigurationBuilder()
             .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
             .AddJsonFile("appsettings.json", optional: false)
+            .AddJsonFile("appsettings.local.json", optional: true)  // 個人設定（優先）
             .Build();
 
         var pathSettings = new PathSettings();
         configuration.GetSection("PathSettings").Bind(pathSettings);
 
-        // Serilog設定
-        var logsFolder = Path.Combine(Directory.GetCurrentDirectory(), pathSettings.LogsFolder);
+        // Serilog設定（documentRootPath配下のLogsフォルダに出力）
+        var logsFolder = Path.Combine(documentRootPath, pathSettings.LogsFolder);
         Directory.CreateDirectory(logsFolder);
 
         Log.Logger = new LoggerConfiguration()
@@ -75,15 +95,13 @@ public partial class App : Application
                 context.Configuration.GetSection("PathSettings").Bind(pathSettings);
                 services.AddSingleton(pathSettings);
 
-                // ソリューションルートパスの設定（実行ファイルの場所から計算）
-                var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-                var pathSegments = Enumerable.Repeat("..", pathSettings.ProjectRootLevelsUp).ToArray();
-                var projectRoot = Path.GetFullPath(Path.Combine(new[] { baseDirectory }.Concat(pathSegments).ToArray()));
+                // documentRootPath をサービスとして登録（依存性注入で使用）
+                services.AddSingleton(_ => documentRootPath);
 
                 // DbContext の登録（SQLite）
                 services.AddDbContext<DocumentManagerContext>(options =>
                 {
-                    var dbPath = Path.Combine(projectRoot, pathSettings.DatabaseName);
+                    var dbPath = Path.Combine(documentRootPath, pathSettings.DatabaseName);
                     Log.Information("DBパス: {DbPath}", dbPath);
                     options.UseSqlite($"Data Source={dbPath}");
                 });
@@ -102,6 +120,8 @@ public partial class App : Application
                 // サービスの登録
                 services.AddScoped<IDataIntegrityService, DataIntegrityService>();
                 services.AddSingleton<SettingsPersistence>();
+                services.AddScoped<Infrastructure.Services.ChecklistLoader>();
+                services.AddScoped<Infrastructure.Services.ChecklistSaver>();
 
                 // UIヘルパーの登録
                 services.AddScoped<CheckItemUIBuilder>();
@@ -132,11 +152,9 @@ public partial class App : Application
                 // シードデータ投入（デフォルトのチェックリストファイルを使用）
                 var loggerFactory = scope.ServiceProvider.GetRequiredService<ILoggerFactory>();
                 var pathSettings = scope.ServiceProvider.GetRequiredService<PathSettings>();
-                var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-                var pathSegments = Enumerable.Repeat("..", pathSettings.ProjectRootLevelsUp).ToArray();
-                var projectRoot = Path.GetFullPath(Path.Combine(new[] { baseDirectory }.Concat(pathSegments).ToArray()));
-                Log.Information("シードデータ投入用プロジェクトルート: {ProjectRoot}", projectRoot);
-                var seeder = new DataSeeder(dbContext, loggerFactory, projectRoot, pathSettings.SelectedChecklistFile);
+                var documentRoot = scope.ServiceProvider.GetRequiredService<string>();  // documentRootPathを取得
+                Log.Information("シードデータ投入用documentRoot: {DocumentRoot}", documentRoot);
+                var seeder = new DataSeeder(dbContext, loggerFactory, documentRoot, pathSettings.SelectedChecklistFile);
                 await seeder.SeedAsync();
             }
 
