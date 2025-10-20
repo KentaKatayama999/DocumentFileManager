@@ -53,13 +53,66 @@ public partial class MainWindow : Window
 
         InitializeComponent();
 
-        // ウィンドウが閉じられたときにアプリケーションを確実にシャットダウン
-        Closed += (s, e) => Application.Current.Shutdown();
+        // ウィンドウが読み込まれたときに自動読み込み
+        Loaded += Window_Loaded;
 
         _logger.LogInformation("MainWindow が初期化されました");
     }
 
-    private async void LoadDocumentsButton_Click(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// ウィンドウが読み込まれたときの処理
+    /// </summary>
+    private async void Window_Loaded(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _logger.LogInformation("Window_Loaded: チェックリスト選択ダイアログを表示します");
+
+            // プロジェクトルートを取得
+            var projectRoot = GetProjectRoot();
+
+            // チェックリスト選択ダイアログを表示
+            var selectionDialog = new ChecklistSelectionDialog(projectRoot)
+            {
+                Owner = this
+            };
+            var dialogResult = selectionDialog.ShowDialog();
+
+            if (dialogResult != true || string.IsNullOrEmpty(selectionDialog.SelectedChecklistFileName))
+            {
+                _logger.LogWarning("チェックリストが選択されませんでした。デフォルトのチェックリストを使用します。");
+            }
+            else
+            {
+                // 選択されたチェックリストファイル名をPathSettingsに設定
+                _pathSettings.SelectedChecklistFile = selectionDialog.SelectedChecklistFileName;
+                _logger.LogInformation("選択されたチェックリスト: {FileName}", _pathSettings.SelectedChecklistFile);
+
+                // 設定を保存
+                var settingsPersistence = _serviceProvider.GetRequiredService<Services.SettingsPersistence>();
+                var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+                var appsettingsPath = Path.Combine(baseDirectory, "appsettings.json");
+                await settingsPersistence.SavePathSettingsAsync(_pathSettings, appsettingsPath);
+                _logger.LogInformation("設定を保存しました");
+            }
+
+            _logger.LogInformation("Window_Loaded: 自動読み込みを開始します");
+            await LoadDocumentsAsync();
+            _logger.LogInformation("Window_Loaded: 資料の読み込みが完了しました");
+            await LoadCheckItemsAsync();
+            _logger.LogInformation("Window_Loaded: チェック項目の読み込みが完了しました");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Window_Loaded: 処理でエラーが発生しました");
+            MessageBox.Show($"処理でエラーが発生しました:\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
+    /// 資料を読み込む
+    /// </summary>
+    private async Task LoadDocumentsAsync()
     {
         try
         {
@@ -81,7 +134,10 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void LoadCheckItemsButton_Click(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// チェック項目を読み込む
+    /// </summary>
+    private async Task LoadCheckItemsAsync()
     {
         try
         {

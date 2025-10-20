@@ -101,6 +101,7 @@ public partial class App : Application
 
                 // サービスの登録
                 services.AddScoped<IDataIntegrityService, DataIntegrityService>();
+                services.AddSingleton<SettingsPersistence>();
 
                 // UIヘルパーの登録
                 services.AddScoped<CheckItemUIBuilder>();
@@ -120,7 +121,7 @@ public partial class App : Application
             Log.Information("アプリケーション起動処理を開始します");
             await _host.StartAsync();
 
-            // データベースマイグレーション自動適用
+            // データベースマイグレーション自動適用（デフォルトのチェックリストファイルを使用）
             using (var scope = _host.Services.CreateScope())
             {
                 Log.Information("データベースマイグレーションを確認しています...");
@@ -128,20 +129,20 @@ public partial class App : Application
                 await dbContext.Database.MigrateAsync();
                 Log.Information("データベースマイグレーションが完了しました");
 
-                // シードデータ投入
+                // シードデータ投入（デフォルトのチェックリストファイルを使用）
                 var loggerFactory = scope.ServiceProvider.GetRequiredService<ILoggerFactory>();
                 var pathSettings = scope.ServiceProvider.GetRequiredService<PathSettings>();
-                // ソリューションルートを取得（実行ファイルの場所から計算）
                 var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
                 var pathSegments = Enumerable.Repeat("..", pathSettings.ProjectRootLevelsUp).ToArray();
                 var projectRoot = Path.GetFullPath(Path.Combine(new[] { baseDirectory }.Concat(pathSegments).ToArray()));
                 Log.Information("シードデータ投入用プロジェクトルート: {ProjectRoot}", projectRoot);
-                var seeder = new DataSeeder(dbContext, loggerFactory, projectRoot, pathSettings.ChecklistFile);
+                var seeder = new DataSeeder(dbContext, loggerFactory, projectRoot, pathSettings.SelectedChecklistFile);
                 await seeder.SeedAsync();
             }
 
             // MainWindow を DI コンテナから取得して表示
             var mainWindow = _host.Services.GetRequiredService<MainWindow>();
+            MainWindow = mainWindow; // MainWindowプロパティに明示的に設定
             mainWindow.Show();
 
             Log.Information("メインウィンドウを表示しました");

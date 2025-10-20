@@ -55,11 +55,6 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="5">
-                        <Button x:Name="LoadDocumentsButton"
-                                Content="資料読み込み"
-                                Padding="10,5"
-                                Margin="0,0,5,0"
-                                Click="LoadDocumentsButton_Click"/>
                         <Button x:Name="AddDocumentButton"
                                 Content="資料追加"
                                 Padding="10,5"
@@ -101,11 +96,6 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="5">
-                        <Button x:Name="LoadCheckItemsButton"
-                                Content="チェック項目読み込み"
-                                Padding="10,5"
-                                Margin="0,0,5,0"
-                                Click="LoadCheckItemsButton_Click"/>
                         <TextBlock x:Name="CheckItemCountText"
                                    VerticalAlignment="Center"
                                    Text="0 件"/>
