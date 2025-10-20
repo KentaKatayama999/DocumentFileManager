@@ -42,6 +42,13 @@ public class CheckItemDocumentRepository : ICheckItemDocumentRepository
             .ToListAsync();
     }
 
+    public async Task<List<CheckItemDocument>> GetAllAsync()
+    {
+        return await _context.CheckItemDocuments
+            .OrderByDescending(cd => cd.LinkedAt)
+            .ToListAsync();
+    }
+
     public async Task<CheckItemDocument?> GetByDocumentAndCheckItemAsync(int documentId, int checkItemId)
     {
         return await _context.CheckItemDocuments

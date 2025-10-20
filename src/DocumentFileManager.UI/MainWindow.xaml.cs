@@ -1,13 +1,17 @@
 ﻿using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using DocumentFileManager.Entities;
 using DocumentFileManager.Infrastructure.Repositories;
 using DocumentFileManager.UI.Configuration;
 using DocumentFileManager.UI.Helpers;
 using DocumentFileManager.UI.Services;
+using DocumentFileManager.UI.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
@@ -31,6 +35,11 @@ public partial class MainWindow : Window
     // チェックリストウィンドウ（シングルトン管理）
     private ChecklistWindow? _checklistWindow;
     private IntPtr _lastOpenedDocumentWindowHandle = IntPtr.Zero;
+
+    // フィルタリングとハイライト用
+    private List<Document> _allDocuments = new List<Document>();
+    private CheckItemViewModel? _selectedCheckItem;
+    private Dictionary<int, StackPanel> _checkItemUIElements = new Dictionary<int, StackPanel>();
 
     public MainWindow(
         IDocumentRepository documentRepository,
@@ -66,34 +75,46 @@ public partial class MainWindow : Window
     {
         try
         {
-            _logger.LogInformation("Window_Loaded: チェックリスト選択ダイアログを表示します");
-
             // プロジェクトルートを取得
             var projectRoot = GetProjectRoot();
 
-            // チェックリスト選択ダイアログを表示
-            var selectionDialog = new ChecklistSelectionDialog(projectRoot)
-            {
-                Owner = this
-            };
-            var dialogResult = selectionDialog.ShowDialog();
+            // チェックリストファイルが設定されているか、ファイルが存在するかをチェック
+            var checklistFilePath = Path.Combine(projectRoot, _pathSettings.SelectedChecklistFile);
+            var shouldShowDialog = string.IsNullOrEmpty(_pathSettings.SelectedChecklistFile) ||
+                                    !File.Exists(checklistFilePath);
 
-            if (dialogResult != true || string.IsNullOrEmpty(selectionDialog.SelectedChecklistFileName))
+            if (shouldShowDialog)
             {
-                _logger.LogWarning("チェックリストが選択されませんでした。デフォルトのチェックリストを使用します。");
+                _logger.LogInformation("Window_Loaded: チェックリスト選択ダイアログを表示します（初回起動または設定が無効）");
+
+                // チェックリスト選択ダイアログを表示
+                var selectionDialog = new ChecklistSelectionDialog(projectRoot)
+                {
+                    Owner = this
+                };
+                var dialogResult = selectionDialog.ShowDialog();
+
+                if (dialogResult != true || string.IsNullOrEmpty(selectionDialog.SelectedChecklistFileName))
+                {
+                    _logger.LogWarning("チェックリストが選択されませんでした。デフォルトのチェックリストを使用します。");
+                }
+                else
+                {
+                    // 選択されたチェックリストファイル名をPathSettingsに設定
+                    _pathSettings.SelectedChecklistFile = selectionDialog.SelectedChecklistFileName;
+                    _logger.LogInformation("選択されたチェックリスト: {FileName}", _pathSettings.SelectedChecklistFile);
+
+                    // 設定を保存
+                    var settingsPersistence = _serviceProvider.GetRequiredService<Services.SettingsPersistence>();
+                    var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+                    var appsettingsPath = Path.Combine(baseDirectory, "appsettings.json");
+                    await settingsPersistence.SavePathSettingsAsync(_pathSettings, appsettingsPath);
+                    _logger.LogInformation("設定を保存しました");
+                }
             }
             else
             {
-                // 選択されたチェックリストファイル名をPathSettingsに設定
-                _pathSettings.SelectedChecklistFile = selectionDialog.SelectedChecklistFileName;
-                _logger.LogInformation("選択されたチェックリスト: {FileName}", _pathSettings.SelectedChecklistFile);
-
-                // 設定を保存
-                var settingsPersistence = _serviceProvider.GetRequiredService<Services.SettingsPersistence>();
-                var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-                var appsettingsPath = Path.Combine(baseDirectory, "appsettings.json");
-                await settingsPersistence.SavePathSettingsAsync(_pathSettings, appsettingsPath);
-                _logger.LogInformation("設定を保存しました");
+                _logger.LogInformation("Window_Loaded: 既存のチェックリスト設定を使用します: {FileName}", _pathSettings.SelectedChecklistFile);
             }
 
             _logger.LogInformation("Window_Loaded: 自動読み込みを開始します");
@@ -120,6 +141,7 @@ public partial class MainWindow : Window
             StatusText.Text = "資料を読み込み中...";
 
             var documents = await _documentRepository.GetAllAsync();
+            _allDocuments = documents; // 全資料リストを保存
             DocumentsListView.ItemsSource = documents;
             DocumentCountText.Text = $"{documents.Count} 件";
 
@@ -146,6 +168,9 @@ public partial class MainWindow : Window
 
             // UIBuilderを使用してGroupBox階層を構築
             await _checkItemUIBuilder.BuildAsync(CheckItemsContainer);
+
+            // チェックボックスのイベントを登録
+            RegisterCheckBoxEvents(CheckItemsContainer);
 
             // ルート項目の数を取得して表示
             var rootItems = await _checkItemRepository.GetRootItemsAsync();
@@ -327,10 +352,10 @@ public partial class MainWindow : Window
                 counter++;
             }
 
-            // DocumentsDirectoryを基準とした相対パス
-            var relativePath = Path.Combine(_pathSettings.DocumentsDirectory, destFileName);
+            // ファイル名のみを相対パスとして保存（プロジェクト内のファイルパスを確実にするため）
+            var relativePath = destFileName;
 
-            // 重複チェック（相対パスで）
+            // 重複チェック（ファイル名で）
             var existing = await _documentRepository.GetByRelativePathAsync(relativePath);
             if (existing != null)
             {
@@ -457,16 +482,32 @@ public partial class MainWindow : Window
 
                 var projectRoot = GetProjectRoot();
                 _logger.LogInformation("プロジェクトルート: {ProjectRoot}", projectRoot);
-                _logger.LogInformation("相対パス: {RelativePath}", document.RelativePath);
-                var absolutePath = Path.Combine(projectRoot, document.RelativePath);
-                _logger.LogInformation("絶対パス: {AbsolutePath}", absolutePath);
+                _logger.LogInformation("DocumentsDirectory: {DocumentsDirectory}", _pathSettings.DocumentsDirectory);
+                _logger.LogInformation("RelativePath (DB保存値): {RelativePath}", document.RelativePath);
+
+                // パス構築（既存データの互換性対応）
+                string absolutePath;
+
+                // 新形式: ファイル名のみが保存されている場合
+                if (!document.RelativePath.Contains("\\") && !document.RelativePath.Contains("/"))
+                {
+                    // プロジェクトルート + DocumentsDirectory + ファイル名 でパス構築
+                    absolutePath = Path.Combine(projectRoot, _pathSettings.DocumentsDirectory, document.RelativePath);
+                    _logger.LogInformation("新形式パス構築: {AbsolutePath}", absolutePath);
+                }
+                // 旧形式: test-files/ファイル名 などが保存されている場合（互換性対応）
+                else
+                {
+                    absolutePath = Path.Combine(projectRoot, document.RelativePath);
+                    _logger.LogInformation("旧形式パス構築（互換性モード）: {AbsolutePath}", absolutePath);
+                }
 
                 // ファイル存在チェック
                 if (!File.Exists(absolutePath))
                 {
                     _logger.LogWarning("ファイルが見つかりません: {AbsolutePath}", absolutePath);
                     MessageBox.Show(
-                        $"ファイルが見つかりません:\n{document.RelativePath}\n\n絶対パス: {absolutePath}",
+                        $"ファイルが見つかりません:\n{document.RelativePath}\n\n絶対パス: {absolutePath}\n\nプロジェクトルート: {projectRoot}\nDocumentsDirectory: {_pathSettings.DocumentsDirectory}",
                         "エラー",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error);
@@ -558,13 +599,18 @@ public partial class MainWindow : Window
             };
 
             // ウィンドウが閉じられたときの処理
-            _checklistWindow.Closed += (s, args) =>
+            _checklistWindow.Closed += async (s, args) =>
             {
                 _checklistWindow = null;
+
                 // MainWindowを再表示
                 Show();
                 Activate();
-                _logger.LogInformation("チェックリストウィンドウが閉じられました。MainWindowを再表示しました。");
+
+                // チェック項目UIを再読み込み（ChecklistWindowでの変更を反映）
+                await LoadCheckItemsAsync();
+
+                _logger.LogInformation("チェックリストウィンドウが閉じられました。MainWindowを再表示し、チェック項目を再読み込みしました。");
             };
 
             // MainWindowを非表示にしてからChecklistWindowを表示
@@ -579,4 +625,214 @@ public partial class MainWindow : Window
             MessageBox.Show($"チェックリストウィンドウの表示に失敗しました:\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
+
+    #region フィルタリングとハイライト機能
+
+    /// <summary>
+    /// チェックボックスのイベントを再帰的に登録
+    /// </summary>
+    private void RegisterCheckBoxEvents(Panel panel)
+    {
+        foreach (var child in panel.Children)
+        {
+            if (child is StackPanel stackPanel && stackPanel.Tag != null)
+            {
+                var tag = stackPanel.Tag;
+                var tagType = tag.GetType();
+                var checkBoxProperty = tagType.GetProperty("CheckBox");
+                var viewModelProperty = tagType.GetProperty("ViewModel");
+
+                if (checkBoxProperty != null && viewModelProperty != null)
+                {
+                    var checkBox = checkBoxProperty.GetValue(tag) as CheckBox;
+                    var viewModel = viewModelProperty.GetValue(tag) as CheckItemViewModel;
+
+                    if (checkBox != null && viewModel != null)
+                    {
+                        // UIElementsマップに追加
+                        _checkItemUIElements[viewModel.Entity.Id] = stackPanel;
+
+                        // クリックイベントを登録
+                        checkBox.Click += CheckBox_Click;
+                    }
+                }
+            }
+            else if (child is GroupBox groupBox && groupBox.Content is Panel childPanel)
+            {
+                RegisterCheckBoxEvents(childPanel);
+            }
+            else if (child is Panel subPanel)
+            {
+                RegisterCheckBoxEvents(subPanel);
+            }
+        }
+    }
+
+    /// <summary>
+    /// チェックボックスクリック時の処理（メインフォーム専用）
+    /// </summary>
+    private async void CheckBox_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is CheckBox checkBox && checkBox.Tag is CheckItemViewModel viewModel)
+        {
+            // チェック状態の変更をキャンセル（トグルを元に戻す）
+            checkBox.IsChecked = !checkBox.IsChecked;
+
+            // 現在選択中のチェック項目と同じ場合は選択解除
+            if (_selectedCheckItem?.Entity.Id == viewModel.Entity.Id)
+            {
+                ClearCheckItemSelection();
+                DocumentsListView.ItemsSource = _allDocuments;
+                DocumentCountText.Text = $"{_allDocuments.Count} 件";
+                _logger.LogInformation("チェック項目の選択を解除しました");
+            }
+            else
+            {
+                // 新しいチェック項目を選択してフィルタリング
+                await FilterDocumentsByCheckItem(viewModel);
+            }
+        }
+    }
+
+    /// <summary>
+    /// すべて表示ボタンクリック
+    /// </summary>
+    private void ShowAllDocumentsButton_Click(object sender, RoutedEventArgs e)
+    {
+        ClearCheckItemSelection();
+        DocumentsListView.ItemsSource = _allDocuments;
+        DocumentCountText.Text = $"{_allDocuments.Count} 件";
+        _logger.LogInformation("すべての資料を表示しました");
+    }
+
+    /// <summary>
+    /// チェック項目コンテナの空白クリック
+    /// </summary>
+    private void CheckItemsContainer_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        // クリック対象がWrapPanel自体（空白部分）の場合のみ処理
+        if (e.OriginalSource == CheckItemsContainer)
+        {
+            ClearCheckItemSelection();
+            DocumentsListView.ItemsSource = _allDocuments;
+            DocumentCountText.Text = $"{_allDocuments.Count} 件";
+            _logger.LogInformation("空白クリックにより、すべての資料を表示しました");
+        }
+    }
+
+    /// <summary>
+    /// 資料選択時のハイライト
+    /// </summary>
+    private async void DocumentsListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (DocumentsListView.SelectedItem is Document selectedDocument)
+        {
+            await HighlightCheckItemsByDocument(selectedDocument);
+        }
+        else
+        {
+            ClearCheckItemHighlights();
+        }
+    }
+
+    /// <summary>
+    /// チェック項目で資料をフィルタリング
+    /// </summary>
+    private async Task FilterDocumentsByCheckItem(CheckItemViewModel checkItem)
+    {
+        try
+        {
+            // 前回の選択をクリア
+            ClearCheckItemSelection();
+
+            // 新しい選択を設定
+            _selectedCheckItem = checkItem;
+
+            // チェック項目に紐づく資料を取得
+            var checkItemDocumentRepo = _serviceProvider.GetRequiredService<ICheckItemDocumentRepository>();
+            var linkedItems = await checkItemDocumentRepo.GetByCheckItemIdAsync(checkItem.Entity.Id);
+            var documentIds = linkedItems.Select(x => x.DocumentId).ToHashSet();
+
+            // フィルタリング
+            var filteredDocuments = _allDocuments.Where(d => documentIds.Contains(d.Id)).ToList();
+
+            DocumentsListView.ItemsSource = filteredDocuments;
+            DocumentCountText.Text = $"{filteredDocuments.Count} 件（フィルタリング中）";
+
+            // 選択されたチェック項目をハイライト（薄い青）
+            if (_checkItemUIElements.TryGetValue(checkItem.Entity.Id, out var stackPanel))
+            {
+                stackPanel.Background = new SolidColorBrush(Color.FromRgb(227, 242, 253)); // #E3F2FD
+            }
+
+            _logger.LogInformation("チェック項目 '{Label}' に紐づく資料 {Count} 件を表示しました", checkItem.Label, filteredDocuments.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "フィルタリング処理に失敗しました");
+            MessageBox.Show($"フィルタリング処理に失敗しました:\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
+    /// チェック項目の選択をクリア
+    /// </summary>
+    private void ClearCheckItemSelection()
+    {
+        if (_selectedCheckItem != null && _checkItemUIElements.TryGetValue(_selectedCheckItem.Entity.Id, out var stackPanel))
+        {
+            stackPanel.Background = Brushes.Transparent;
+        }
+        _selectedCheckItem = null;
+    }
+
+    /// <summary>
+    /// 資料に紐づくチェック項目をハイライト
+    /// </summary>
+    private async Task HighlightCheckItemsByDocument(Document document)
+    {
+        try
+        {
+            // 前回のハイライトをクリア
+            ClearCheckItemHighlights();
+
+            // 資料に紐づくチェック項目を取得
+            var checkItemDocumentRepo = _serviceProvider.GetRequiredService<ICheckItemDocumentRepository>();
+            var linkedItems = await checkItemDocumentRepo.GetByDocumentIdAsync(document.Id);
+            var checkItemIds = linkedItems.Select(x => x.CheckItemId).ToHashSet();
+
+            // ハイライト（薄い黄色）
+            foreach (var checkItemId in checkItemIds)
+            {
+                if (_checkItemUIElements.TryGetValue(checkItemId, out var stackPanel))
+                {
+                    stackPanel.Background = new SolidColorBrush(Color.FromRgb(255, 249, 196)); // #FFF9C4
+                }
+            }
+
+            _logger.LogInformation("資料 '{FileName}' に紐づく {Count} 件のチェック項目をハイライトしました", document.FileName, checkItemIds.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "ハイライト処理に失敗しました");
+        }
+    }
+
+    /// <summary>
+    /// チェック項目のハイライトをクリア
+    /// </summary>
+    private void ClearCheckItemHighlights()
+    {
+        foreach (var stackPanel in _checkItemUIElements.Values)
+        {
+            // 選択中のチェック項目（フィルタリング用）は青いまま維持
+            if (_selectedCheckItem != null && stackPanel == _checkItemUIElements[_selectedCheckItem.Entity.Id])
+            {
+                continue;
+            }
+            stackPanel.Background = Brushes.Transparent;
+        }
+    }
+
+    #endregion
 }

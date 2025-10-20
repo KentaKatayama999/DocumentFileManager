@@ -16,20 +16,46 @@
         <Border Grid.Row="0"
                 Background="LightGray"
                 Margin="10">
-            <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                         VerticalScrollBarVisibility="Auto">
-                <Image x:Name="CaptureImage"
-                       Stretch="Uniform"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"/>
+            <ScrollViewer x:Name="ImageScrollViewer"
+                         HorizontalScrollBarVisibility="Auto"
+                         VerticalScrollBarVisibility="Auto"
+                         CanContentScroll="False"
+                         PreviewMouseWheel="ImageScrollViewer_PreviewMouseWheel">
+                <Grid x:Name="ImageContainer"
+                      Background="Transparent"
+                      MouseRightButtonDown="ImageContainer_MouseRightButtonDown"
+                      MouseRightButtonUp="ImageContainer_MouseRightButtonUp"
+                      MouseMove="ImageContainer_MouseMove"
+                      MouseLeave="ImageContainer_MouseLeave">
+                    <Image x:Name="CaptureImage"
+                           Stretch="Uniform"
+                           HorizontalAlignment="Left"
+                           VerticalAlignment="Top"/>
+                </Grid>
             </ScrollViewer>
         </Border>
+
+        <!-- 操作説明 -->
+        <TextBlock Grid.Row="1"
+                   Text="マウスホイール: 拡大縮小 | 右クリックドラッグ: 画面移動"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Top"
+                   Margin="10,5,10,5"
+                   FontSize="12"
+                   Foreground="DimGray"/>
 
         <!-- ボタンエリア -->
         <StackPanel Grid.Row="1"
                     Orientation="Horizontal"
                     HorizontalAlignment="Center"
-                    Margin="10">
+                    Margin="10,30,10,10">
+            <Button x:Name="ResetButton"
+                    Content="リセット"
+                    Width="120"
+                    Height="40"
+                    Margin="5"
+                    FontSize="16"
+                    Click="ResetButton_Click"/>
             <Button x:Name="DeleteButton"
                     Content="削除"
                     Width="120"

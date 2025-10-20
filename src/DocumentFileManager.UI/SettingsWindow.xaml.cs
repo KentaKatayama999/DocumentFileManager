@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Windows;
 using DocumentFileManager.UI.Configuration;
@@ -25,6 +26,9 @@ public partial class SettingsWindow : Window
 
         // データバインディング設定
         DataContext = _settings;
+
+        // 現在のチェックリストを表示
+        CurrentChecklistText.Text = _pathSettings.SelectedChecklistFile;
 
         _logger.LogInformation("設定ウィンドウを開きました");
     }
@@ -74,12 +78,9 @@ public partial class SettingsWindow : Window
                     loggingElement.WriteTo(writer);
                 }
 
-                // PathSettings セクションをコピー
-                if (root.TryGetProperty("PathSettings", out var pathSettingsElement))
-                {
-                    writer.WritePropertyName("PathSettings");
-                    pathSettingsElement.WriteTo(writer);
-                }
+                // PathSettings セクションを書き込み（更新された値を使用）
+                writer.WritePropertyName("PathSettings");
+                JsonSerializer.Serialize(writer, _pathSettings, options);
 
                 // UISettings セクションを書き込み
                 writer.WritePropertyName("UISettings");
@@ -119,6 +120,51 @@ public partial class SettingsWindow : Window
         _logger.LogInformation("設定の変更をキャンセルしました");
         DialogResult = false;
         Close();
+    }
+
+    private void ChangeChecklistButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _logger.LogInformation("チェックリスト変更ボタンがクリックされました");
+
+            // プロジェクトルートを取得
+            var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            var pathSegments = Enumerable.Repeat("..", _pathSettings.ProjectRootLevelsUp).ToArray();
+            var projectRoot = Path.GetFullPath(Path.Combine(new[] { baseDirectory }.Concat(pathSegments).ToArray()));
+
+            // チェックリスト選択ダイアログを表示
+            var selectionDialog = new ChecklistSelectionDialog(projectRoot)
+            {
+                Owner = this
+            };
+            var dialogResult = selectionDialog.ShowDialog();
+
+            if (dialogResult == true && !string.IsNullOrEmpty(selectionDialog.SelectedChecklistFileName))
+            {
+                // 選択されたチェックリストファイル名をPathSettingsに設定
+                _pathSettings.SelectedChecklistFile = selectionDialog.SelectedChecklistFileName;
+                _logger.LogInformation("チェックリストを変更しました: {FileName}", _pathSettings.SelectedChecklistFile);
+
+                // 画面表示を更新
+                CurrentChecklistText.Text = _pathSettings.SelectedChecklistFile;
+
+                MessageBox.Show(
+                    $"チェックリストを変更しました: {_pathSettings.SelectedChecklistFile}\n\n設定を保存してください。",
+                    "チェックリスト変更",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "チェックリスト変更中にエラーが発生しました");
+            MessageBox.Show(
+                $"チェックリストの変更に失敗しました:\n{ex.Message}",
+                "エラー",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
     }
 
     /// <summary>

@@ -16,6 +16,9 @@ public interface ICheckItemDocumentRepository
     /// <summary>資料に紐づけられたチェック項目を取得</summary>
     Task<List<CheckItemDocument>> GetByDocumentIdAsync(int documentId);
 
+    /// <summary>すべての紐づけを取得</summary>
+    Task<List<CheckItemDocument>> GetAllAsync();
+
     /// <summary>資料とチェック項目の紐づけを取得</summary>
     Task<CheckItemDocument?> GetByDocumentAndCheckItemAsync(int documentId, int checkItemId);
 

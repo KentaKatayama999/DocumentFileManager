@@ -60,6 +60,11 @@
                                 Padding="10,5"
                                 Margin="0,0,5,0"
                                 Click="AddDocumentButton_Click"/>
+                        <Button x:Name="ShowAllDocumentsButton"
+                                Content="すべて表示"
+                                Padding="10,5"
+                                Margin="0,0,5,0"
+                                Click="ShowAllDocumentsButton_Click"/>
                         <TextBlock x:Name="DocumentCountText"
                                    VerticalAlignment="Center"
                                    Text="0 件"/>
@@ -71,7 +76,8 @@
                               AllowDrop="True"
                               DragEnter="DocumentsListView_DragEnter"
                               Drop="DocumentsListView_Drop"
-                              MouseDoubleClick="DocumentsListView_MouseDoubleClick">
+                              MouseDoubleClick="DocumentsListView_MouseDoubleClick"
+                              SelectionChanged="DocumentsListView_SelectionChanged">
                         <ListView.View>
                             <GridView>
                                 <GridViewColumn Header="ファイル名" Width="180" DisplayMemberBinding="{Binding FileName}"/>
@@ -109,7 +115,8 @@
                                   CanContentScroll="False"
                                   PanningMode="VerticalOnly">
                         <WrapPanel x:Name="CheckItemsContainer"
-                                   Orientation="Horizontal"/>
+                                   Orientation="Horizontal"
+                                   MouseLeftButtonDown="CheckItemsContainer_MouseLeftButtonDown"/>
                     </ScrollViewer>
                 </Grid>
             </GroupBox>

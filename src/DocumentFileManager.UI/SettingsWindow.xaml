@@ -93,6 +93,20 @@
                     </StackPanel>
                 </GroupBox>
 
+                <!-- チェックリスト設定 -->
+                <GroupBox Header="チェックリスト設定" Margin="0,0,0,10" Padding="10">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="現在のチェックリスト:" Width="150" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="CurrentChecklistText" VerticalAlignment="Center" FontWeight="Bold"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="" Width="150"/>
+                            <Button x:Name="ChangeChecklistButton" Content="チェックリストを変更" Width="150" Click="ChangeChecklistButton_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+                </GroupBox>
+
                 <!-- レイアウト設定 -->
                 <GroupBox Header="レイアウト設定" Margin="0,0,0,10" Padding="10">
                     <StackPanel>

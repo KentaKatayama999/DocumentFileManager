@@ -63,13 +63,28 @@ public class CheckItemUIBuilder
 
         _logger.LogInformation("{Count} 件のルート項目を取得しました", rootItems.Count);
 
-        // Documentと紐づいたチェック項目を取得（Documentが指定されている場合）
+        // Documentと紐づいたチェック項目を取得
         Dictionary<int, CheckItemDocument>? checkItemDocuments = null;
         if (document != null)
         {
+            // 特定の資料に紐づいたチェック項目を取得
             var linkedItems = await _checkItemDocumentRepository.GetByDocumentIdAsync(document.Id);
             checkItemDocuments = linkedItems.ToDictionary(x => x.CheckItemId);
             _logger.LogInformation("{Count} 件の紐づけデータを取得しました", linkedItems.Count);
+        }
+        else
+        {
+            // MainWindow（全体表示）の場合：各チェック項目の最新キャプチャを取得
+            var allLinkedItems = await _checkItemDocumentRepository.GetAllAsync();
+
+            // CheckItemIdでグループ化し、各グループ内でLinkedAtが最新のものを選択
+            checkItemDocuments = allLinkedItems
+                .Where(x => x.CaptureFile != null) // キャプチャがあるもののみ
+                .GroupBy(x => x.CheckItemId)
+                .Select(g => g.OrderByDescending(x => x.LinkedAt).First()) // 最新のもの
+                .ToDictionary(x => x.CheckItemId);
+
+            _logger.LogInformation("全体表示モード：{Count} 件のチェック項目に最新キャプチャがあります", checkItemDocuments.Count);
         }
 
         // ViewModelに変換
@@ -110,10 +125,21 @@ public class CheckItemUIBuilder
             // Documentと紐づいている場合は、紐づけデータからチェック状態を設定
             if (checkItemDocuments != null && checkItemDocuments.TryGetValue(item.Id, out var linkedItem))
             {
-                viewModel.IsChecked = true; // 紐づけが存在する場合はチェック済みとする
-                viewModel.CaptureFilePath = linkedItem.CaptureFile; // キャプチャファイルパスを設定
-                _logger.LogDebug("紐づけデータからチェック状態を設定: {Path} = チェック済み, Capture={CaptureFile}",
-                    item.Path, linkedItem.CaptureFile ?? "(なし)");
+                if (_currentDocument != null)
+                {
+                    // ChecklistWindow（特定の資料）の場合：チェック状態とキャプチャを設定
+                    viewModel.IsChecked = true; // 紐づけが存在する場合はチェック済みとする
+                    viewModel.CaptureFilePath = linkedItem.CaptureFile; // キャプチャファイルパスを設定
+                    _logger.LogDebug("紐づけデータからチェック状態を設定: {Path} = チェック済み, Capture={CaptureFile}",
+                        item.Path, linkedItem.CaptureFile ?? "(なし)");
+                }
+                else
+                {
+                    // MainWindow（全体表示）の場合：最新のキャプチャのみ設定（チェック状態は設定しない）
+                    viewModel.CaptureFilePath = linkedItem.CaptureFile; // キャプチャファイルパスを設定
+                    _logger.LogDebug("最新キャプチャを設定: {Path}, Capture={CaptureFile}",
+                        item.Path, linkedItem.CaptureFile ?? "(なし)");
+                }
             }
 
             // 子要素を再帰的に追加
@@ -274,7 +300,7 @@ public class CheckItemUIBuilder
         // 画像確認ボタンクリック
         imageButton.Click += (sender, e) =>
         {
-            if (viewModel.CaptureFilePath != null && _currentDocument != null)
+            if (viewModel.CaptureFilePath != null)
             {
                 var absolutePath = Path.Combine(
                     Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "",
@@ -287,8 +313,8 @@ public class CheckItemUIBuilder
                 var viewer = new CaptureImageViewerWindow(absolutePath, null);
                 bool? result = viewer.ShowDialog();
 
-                // 削除された場合はボタンを非表示にする
-                if (viewer.IsDeleted)
+                // 削除された場合はボタンを非表示にする（ChecklistWindowからのみ削除可能）
+                if (viewer.IsDeleted && _currentDocument != null)
                 {
                     viewModel.CaptureFilePath = null;
                     imageButton.Visibility = Visibility.Collapsed;
