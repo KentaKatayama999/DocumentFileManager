@@ -8,12 +8,13 @@ using System.Windows.Media.Imaging;
 using DocumentFileManager.Entities;
 using DocumentFileManager.Infrastructure.Repositories;
 using DocumentFileManager.UI.Configuration;
+using DocumentFileManager.UI.Dialogs;
 using DocumentFileManager.UI.Helpers;
 using DocumentFileManager.UI.Services;
 using DocumentFileManager.UI.ViewModels;
 using Microsoft.Extensions.Logging;
 
-namespace DocumentFileManager.UI;
+namespace DocumentFileManager.UI.Windows;
 
 /// <summary>
 /// チェックリストウィンドウ
@@ -59,6 +60,8 @@ public partial class ChecklistWindow : Window
 
     private readonly CheckItemUIBuilder _checkItemUIBuilder;
     private readonly ICheckItemDocumentRepository _checkItemDocumentRepository;
+    private readonly ICheckItemRepository _checkItemRepository;
+    private readonly Infrastructure.Services.ChecklistSaver _checklistSaver;
     private readonly PathSettings _pathSettings;
     private readonly ILogger<ChecklistWindow> _logger;
     private readonly Document _document;
@@ -71,9 +74,11 @@ public partial class ChecklistWindow : Window
         Document document,
         CheckItemUIBuilder checkItemUIBuilder,
         ICheckItemDocumentRepository checkItemDocumentRepository,
+        ICheckItemRepository checkItemRepository,
+        Infrastructure.Services.ChecklistSaver checklistSaver,
         PathSettings pathSettings,
         ILogger<ChecklistWindow> logger)
-        : this(document, checkItemUIBuilder, checkItemDocumentRepository, pathSettings, logger, IntPtr.Zero)
+        : this(document, checkItemUIBuilder, checkItemDocumentRepository, checkItemRepository, checklistSaver, pathSettings, logger, IntPtr.Zero)
     {
     }
 
@@ -81,6 +86,8 @@ public partial class ChecklistWindow : Window
         Document document,
         CheckItemUIBuilder checkItemUIBuilder,
         ICheckItemDocumentRepository checkItemDocumentRepository,
+        ICheckItemRepository checkItemRepository,
+        Infrastructure.Services.ChecklistSaver checklistSaver,
         PathSettings pathSettings,
         ILogger<ChecklistWindow> logger,
         IntPtr documentWindowHandle)
@@ -88,6 +95,8 @@ public partial class ChecklistWindow : Window
         _document = document;
         _checkItemUIBuilder = checkItemUIBuilder;
         _checkItemDocumentRepository = checkItemDocumentRepository;
+        _checkItemRepository = checkItemRepository;
+        _checklistSaver = checklistSaver;
         _pathSettings = pathSettings;
         _logger = logger;
         _documentWindowHandle = documentWindowHandle;
@@ -289,6 +298,246 @@ public partial class ChecklistWindow : Window
     private void CaptureButton_Click(object sender, RoutedEventArgs e)
     {
         PerformCapture();
+    }
+
+    /// <summary>
+    /// 項目追加ボタンクリック
+    /// </summary>
+    private async void AddItemButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            // 項目名入力ダイアログを表示
+            var inputDialog = new Window
+            {
+                Title = "チェック項目の追加",
+                Width = 400,
+                Height = 200,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = this,
+                ResizeMode = ResizeMode.NoResize
+            };
+
+            var stackPanel = new StackPanel { Margin = new Thickness(20) };
+            stackPanel.Children.Add(new TextBlock { Text = "項目名を入力してください:", Margin = new Thickness(0, 0, 0, 10) });
+
+            var textBox = new TextBox { Margin = new Thickness(0, 0, 0, 20) };
+            stackPanel.Children.Add(textBox);
+
+            var buttonPanel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+            var okButton = new Button { Content = "OK", Width = 80, Margin = new Thickness(0, 0, 10, 0), IsDefault = true };
+            var cancelButton = new Button { Content = "キャンセル", Width = 80, IsCancel = true };
+
+            okButton.Click += (s, args) => { inputDialog.DialogResult = true; inputDialog.Close(); };
+            cancelButton.Click += (s, args) => { inputDialog.DialogResult = false; inputDialog.Close(); };
+
+            buttonPanel.Children.Add(okButton);
+            buttonPanel.Children.Add(cancelButton);
+            stackPanel.Children.Add(buttonPanel);
+
+            inputDialog.Content = stackPanel;
+            textBox.Focus();
+
+            bool? result = inputDialog.ShowDialog();
+
+            if (result == true && !string.IsNullOrWhiteSpace(textBox.Text))
+            {
+                var itemName = textBox.Text.Trim();
+                _logger.LogInformation("チェック項目を追加: {ItemName}", itemName);
+
+                // 「追加項目」カテゴリの存在確認
+                var additionalItemsCategory = await _checkItemRepository.GetByPathAsync("追加項目");
+
+                if (additionalItemsCategory == null)
+                {
+                    // 「追加項目」カテゴリを作成
+                    additionalItemsCategory = new CheckItem
+                    {
+                        Path = "追加項目",
+                        Label = "追加項目",
+                        Status = ValueObjects.ItemStatus.Unspecified,
+                        ParentId = null
+                    };
+
+                    await _checkItemRepository.AddAsync(additionalItemsCategory);
+                    await _checkItemRepository.SaveChangesAsync();
+
+                    _logger.LogInformation("「追加項目」カテゴリを作成しました: Id={Id}", additionalItemsCategory.Id);
+                }
+
+                // 新規項目を作成
+                var newItem = new CheckItem
+                {
+                    Path = $"追加項目/{itemName}",
+                    Label = itemName,
+                    Status = ValueObjects.ItemStatus.Unspecified,
+                    ParentId = additionalItemsCategory.Id
+                };
+
+                await _checkItemRepository.AddAsync(newItem);
+                await _checkItemRepository.SaveChangesAsync();
+
+                _logger.LogInformation("新しいチェック項目を追加しました: Id={Id}, Path={Path}", newItem.Id, newItem.Path);
+
+                // すべてのチェック項目を取得してJSONに保存
+                var allCheckItems = await _checkItemRepository.GetAllWithChildrenAsync();
+
+                var projectRoot = Path.Combine(
+                    Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "",
+                    "..", "..", "..", "..", "..");
+                projectRoot = Path.GetFullPath(projectRoot);
+
+                var jsonFilePath = Path.Combine(projectRoot, _pathSettings.SelectedChecklistFile);
+
+                await _checklistSaver.SaveAsync(allCheckItems, jsonFilePath);
+
+                _logger.LogInformation("チェック項目をJSONファイルに保存しました: {FilePath}", jsonFilePath);
+
+                // UIを再読み込み
+                CheckItemsContainer.Children.Clear();
+                await _checkItemUIBuilder.BuildAsync(CheckItemsContainer, _document, PerformCaptureForCheckItem);
+
+                _logger.LogInformation("チェック項目UIを再読み込みしました");
+
+                MessageBox.Show(
+                    $"チェック項目「{itemName}」を追加しました。",
+                    "項目追加完了",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "チェック項目の追加に失敗しました");
+            MessageBox.Show(
+                $"チェック項目の追加に失敗しました:\n{ex.Message}",
+                "エラー",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
+    /// 新規チェックリスト作成ボタンクリック
+    /// </summary>
+    private async void CreateNewChecklistButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            // ファイル名入力ダイアログを表示
+            var inputDialog = new Window
+            {
+                Title = "新規チェックリスト作成",
+                Width = 450,
+                Height = 220,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = this,
+                ResizeMode = ResizeMode.NoResize
+            };
+
+            var stackPanel = new StackPanel { Margin = new Thickness(20) };
+            stackPanel.Children.Add(new TextBlock
+            {
+                Text = "新しいチェックリスト名を入力してください:",
+                Margin = new Thickness(0, 0, 0, 10)
+            });
+            stackPanel.Children.Add(new TextBlock
+            {
+                Text = "（例: 建築プロジェクト、設備点検など）",
+                FontSize = 11,
+                Foreground = System.Windows.Media.Brushes.Gray,
+                Margin = new Thickness(0, 0, 0, 10)
+            });
+
+            var textBox = new TextBox { Margin = new Thickness(0, 0, 0, 20) };
+            stackPanel.Children.Add(textBox);
+
+            var buttonPanel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+            var okButton = new Button { Content = "作成", Width = 80, Margin = new Thickness(0, 0, 10, 0), IsDefault = true };
+            var cancelButton = new Button { Content = "キャンセル", Width = 80, IsCancel = true };
+
+            okButton.Click += (s, args) => { inputDialog.DialogResult = true; inputDialog.Close(); };
+            cancelButton.Click += (s, args) => { inputDialog.DialogResult = false; inputDialog.Close(); };
+
+            buttonPanel.Children.Add(okButton);
+            buttonPanel.Children.Add(cancelButton);
+            stackPanel.Children.Add(buttonPanel);
+
+            inputDialog.Content = stackPanel;
+            textBox.Focus();
+
+            bool? result = inputDialog.ShowDialog();
+
+            if (result == true && !string.IsNullOrWhiteSpace(textBox.Text))
+            {
+                var checklistName = textBox.Text.Trim();
+                _logger.LogInformation("新規チェックリストを作成: {ChecklistName}", checklistName);
+
+                // ファイル名を生成（checklist_xxx.json形式）
+                var safeFileName = string.Concat(checklistName.Split(Path.GetInvalidFileNameChars()));
+                var fileName = $"checklist_{safeFileName}.json";
+
+                var projectRoot = Path.Combine(
+                    Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "",
+                    "..", "..", "..", "..", "..");
+                projectRoot = Path.GetFullPath(projectRoot);
+
+                var filePath = Path.Combine(projectRoot, fileName);
+
+                // 既に同名のファイルが存在する場合は確認
+                if (File.Exists(filePath))
+                {
+                    var overwriteResult = MessageBox.Show(
+                        $"チェックリスト「{fileName}」は既に存在します。\n上書きしますか？",
+                        "確認",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Question);
+
+                    if (overwriteResult != MessageBoxResult.Yes)
+                    {
+                        return;
+                    }
+                }
+
+                // 空のチェックリストを作成（基本カテゴリのみ）
+                var emptyCheckItems = new List<CheckItem>();
+
+                // JSON形式で保存
+                await _checklistSaver.SaveAsync(emptyCheckItems, filePath);
+
+                _logger.LogInformation("新規チェックリストファイルを作成しました: {FilePath}", filePath);
+
+                // 設定を更新して新しいチェックリストを使用
+                _pathSettings.SelectedChecklistFile = fileName;
+
+                // データベースの既存チェック項目をクリア（新しいチェックリスト用）
+                var existingItems = await _checkItemRepository.GetAllWithChildrenAsync();
+                foreach (var item in existingItems)
+                {
+                    await _checkItemRepository.DeleteAsync(item.Id);
+                }
+
+                _logger.LogInformation("既存のチェック項目をクリアしました");
+
+                // UIを再読み込み（空の状態）
+                CheckItemsContainer.Children.Clear();
+
+                MessageBox.Show(
+                    $"新規チェックリスト「{checklistName}」を作成しました。\n\nファイル: {fileName}\n\n「項目追加」ボタンから項目を追加してください。",
+                    "作成完了",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "新規チェックリストの作成に失敗しました");
+            MessageBox.Show(
+                $"新規チェックリストの作成に失敗しました:\n{ex.Message}",
+                "エラー",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
     }
 
     /// <summary>

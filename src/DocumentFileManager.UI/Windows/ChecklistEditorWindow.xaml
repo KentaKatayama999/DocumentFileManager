@@ -1,0 +1,137 @@
+<Window x:Class="DocumentFileManager.UI.Windows.ChecklistEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:DocumentFileManager.UI"
+        xmlns:converters="clr-namespace:DocumentFileManager.UI.Converters"
+        mc:Ignorable="d"
+        Title="チェックリストエディター"
+        Height="700" Width="900"
+        MinHeight="500" MinWidth="700"
+        WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <!-- NullToBoolConverter -->
+        <converters:NullToBoolConverter x:Key="NullToBoolConverter"/>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ツールバー -->
+        <Border Grid.Row="0" Background="#34495E" Padding="10">
+            <StackPanel Orientation="Horizontal">
+                <Button x:Name="LoadButton"
+                        Content="📂 読み込み"
+                        Padding="10,5"
+                        Margin="0,0,5,0"
+                        Click="LoadButton_Click"
+                        ToolTip="チェックリストファイルを読み込む"/>
+                <Button x:Name="SaveButton"
+                        Content="💾 保存"
+                        Padding="10,5"
+                        Margin="0,0,5,0"
+                        Click="SaveButton_Click"
+                        ToolTip="チェックリストファイルに保存"/>
+                <Separator Width="10" Background="Transparent"/>
+                <Button x:Name="AddCategoryButton"
+                        Content="➕ カテゴリ追加"
+                        Padding="10,5"
+                        Margin="0,0,5,0"
+                        Click="AddCategoryButton_Click"
+                        ToolTip="選択項目の下にカテゴリを追加"/>
+                <Button x:Name="AddItemButton"
+                        Content="➕ 項目追加"
+                        Padding="10,5"
+                        Margin="0,0,5,0"
+                        Click="AddItemButton_Click"
+                        ToolTip="選択項目の下にチェック項目を追加"/>
+                <Button x:Name="DeleteButton"
+                        Content="🗑️ 削除"
+                        Padding="10,5"
+                        Margin="0,0,5,0"
+                        Click="DeleteButton_Click"
+                        ToolTip="選択項目を削除"/>
+                <Separator Width="10" Background="Transparent"/>
+                <Button x:Name="MoveUpButton"
+                        Content="⬆️ 上へ"
+                        Padding="10,5"
+                        Margin="0,0,5,0"
+                        Click="MoveUpButton_Click"
+                        ToolTip="選択項目を上に移動"/>
+                <Button x:Name="MoveDownButton"
+                        Content="⬇️ 下へ"
+                        Padding="10,5"
+                        Margin="0,0,5,0"
+                        Click="MoveDownButton_Click"
+                        ToolTip="選択項目を下に移動"/>
+            </StackPanel>
+        </Border>
+
+        <!-- メインコンテンツ -->
+        <Grid Grid.Row="1" Margin="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 左側: TreeView -->
+            <GroupBox Grid.Column="0" Header="チェックリスト構造" Margin="0,0,5,0">
+                <TreeView x:Name="ChecklistTreeView"
+                          SelectedItemChanged="ChecklistTreeView_SelectedItemChanged">
+                    <TreeView.ItemTemplate>
+                        <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding TypeIcon}" Margin="0,0,5,0"/>
+                                <TextBlock Text="{Binding Label}" FontWeight="Bold"/>
+                                <TextBlock Text="{Binding TypeLabel}" Margin="5,0,0,0" Foreground="Gray" FontSize="10"/>
+                            </StackPanel>
+                        </HierarchicalDataTemplate>
+                    </TreeView.ItemTemplate>
+                </TreeView>
+            </GroupBox>
+
+            <!-- 区切り -->
+            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch"/>
+
+            <!-- 右側: プロパティ編集 -->
+            <GroupBox Grid.Column="2" Header="プロパティ編集" Margin="5,0,0,0">
+                <StackPanel Margin="10" IsEnabled="{Binding ElementName=ChecklistTreeView, Path=SelectedItem, Converter={StaticResource NullToBoolConverter}}">
+                    <TextBlock Text="ラベル:" Margin="0,0,0,5"/>
+                    <TextBox x:Name="LabelTextBox"
+                             Margin="0,0,0,15"
+                             TextChanged="LabelTextBox_TextChanged"/>
+
+                    <TextBlock Text="種別:" Margin="0,0,0,5"/>
+                    <ComboBox x:Name="TypeComboBox"
+                              Margin="0,0,0,15"
+                              SelectionChanged="TypeComboBox_SelectionChanged">
+                        <ComboBoxItem Content="カテゴリ" Tag="category"/>
+                        <ComboBoxItem Content="チェック項目" Tag="item"/>
+                    </ComboBox>
+
+                    <CheckBox x:Name="CheckedCheckBox"
+                              Content="チェック済み"
+                              Margin="0,0,0,15"
+                              Checked="CheckedCheckBox_Changed"
+                              Unchecked="CheckedCheckBox_Changed"/>
+
+                    <TextBlock Text="情報:" Margin="0,10,0,5" FontWeight="Bold"/>
+                    <TextBlock x:Name="InfoTextBlock"
+                               TextWrapping="Wrap"
+                               Foreground="Gray"/>
+                </StackPanel>
+            </GroupBox>
+        </Grid>
+
+        <!-- ステータスバー -->
+        <Border Grid.Row="2" Background="#ECF0F1" Padding="10,5" BorderBrush="#BDC3C7" BorderThickness="0,1,0,0">
+            <TextBlock x:Name="StatusText" Text="準備完了"/>
+        </Border>
+    </Grid>
+</Window>

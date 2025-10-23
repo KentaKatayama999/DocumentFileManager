@@ -8,6 +8,7 @@ using DocumentFileManager.Entities;
 using DocumentFileManager.Infrastructure.Repositories;
 using DocumentFileManager.UI.Configuration;
 using DocumentFileManager.UI.ViewModels;
+using DocumentFileManager.UI.Windows;
 using Microsoft.Extensions.Logging;
 
 namespace DocumentFileManager.UI.Helpers;

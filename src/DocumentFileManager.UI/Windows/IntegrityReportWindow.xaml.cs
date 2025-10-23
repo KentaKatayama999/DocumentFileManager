@@ -4,7 +4,7 @@ using System;
 using System.Text;
 using System.Windows;
 
-namespace DocumentFileManager.UI;
+namespace DocumentFileManager.UI.Windows;
 
 /// <summary>
 /// データ整合性チェック結果ウィンドウ

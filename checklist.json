@@ -1,106 +1,111 @@
 {
   "checkItems": [
     {
-      "label": "設計図面",
+      "label": "\u8A2D\u8A08\u56F3\u9762",
       "type": "category",
+      "checked": false,
       "children": [
         {
-          "label": "建築図面",
+          "label": "\u5EFA\u7BC9\u56F3\u9762",
           "type": "category",
+          "checked": false,
           "children": [
             {
-              "label": "平面図",
+              "label": "\u5E73\u9762\u56F3",
               "type": "category",
+              "checked": false,
               "children": [
                 {
-                  "label": "地下1階平面図",
-                  "type": "item",
-                  "checked": false
-                },
-                {
-                  "label": "1階平面図",
+                  "label": "1\u968E\u5E73\u9762\u56F3",
                   "type": "item",
                   "checked": true
                 },
                 {
-                  "label": "2階平面図",
+                  "label": "2\u968E\u5E73\u9762\u56F3",
                   "type": "item",
                   "checked": true
                 },
                 {
-                  "label": "3階平面図",
+                  "label": "\u5C4B\u4E0A\u5E73\u9762\u56F3",
                   "type": "item",
                   "checked": true
                 },
                 {
-                  "label": "4階平面図",
+                  "label": "\u5730\u4E0B1\u968E\u5E73\u9762\u56F3",
+                  "type": "item",
+                  "checked": true
+                },
+                {
+                  "label": "3\u968E\u5E73\u9762\u56F3",
+                  "type": "item",
+                  "checked": true
+                },
+                {
+                  "label": "4\u968E\u5E73\u9762\u56F3",
+                  "type": "item",
+                  "checked": true
+                },
+                {
+                  "label": "5\u968E\u5E73\u9762\u56F3",
                   "type": "item",
                   "checked": false
                 },
                 {
-                  "label": "5階平面図",
+                  "label": "\u5854\u5C4B\u5E73\u9762\u56F3",
                   "type": "item",
-                  "checked": false
-                },
-                {
-                  "label": "塔屋平面図",
-                  "type": "item",
-                  "checked": false
-                },
-                {
-                  "label": "屋上平面図",
-                  "type": "item",
-                  "checked": false
+                  "checked": true
                 }
               ]
             },
             {
-              "label": "立面図",
+              "label": "\u7ACB\u9762\u56F3",
               "type": "category",
+              "checked": false,
               "children": [
                 {
-                  "label": "東側立面図",
+                  "label": "\u6771\u5074\u7ACB\u9762\u56F3",
                   "type": "item",
                   "checked": true
                 },
                 {
-                  "label": "西側立面図",
-                  "type": "item",
-                  "checked": false
-                },
-                {
-                  "label": "南側立面図",
+                  "label": "\u897F\u5074\u7ACB\u9762\u56F3",
                   "type": "item",
                   "checked": true
                 },
                 {
-                  "label": "北側立面図",
+                  "label": "\u5357\u5074\u7ACB\u9762\u56F3",
                   "type": "item",
-                  "checked": false
+                  "checked": true
+                },
+                {
+                  "label": "\u5317\u5074\u7ACB\u9762\u56F3",
+                  "type": "item",
+                  "checked": true
                 }
               ]
             },
             {
-              "label": "断面図",
+              "label": "\u65AD\u9762\u56F3",
               "type": "category",
+              "checked": false,
               "children": [
                 {
-                  "label": "断面図A-A'",
-                  "type": "item",
-                  "checked": false
-                },
-                {
-                  "label": "断面図B-B'",
+                  "label": "\u65AD\u9762\u56F3A-A\u0027",
                   "type": "item",
                   "checked": true
                 },
                 {
-                  "label": "断面図C-C'",
+                  "label": "\u65AD\u9762\u56F3B-B\u0027",
                   "type": "item",
-                  "checked": false
+                  "checked": true
                 },
                 {
-                  "label": "矩計図",
+                  "label": "\u65AD\u9762\u56F3C-C\u0027",
+                  "type": "item",
+                  "checked": true
+                },
+                {
+                  "label": "\u77E9\u8A08\u56F3",
                   "type": "item",
                   "checked": true
                 }
@@ -109,117 +114,64 @@
           ]
         },
         {
-          "label": "設備図面",
+          "label": "\u8A2D\u5099\u56F3\u9762",
           "type": "category",
+          "checked": false,
           "children": [
             {
-              "label": "電気設備",
+              "label": "\u96FB\u6C17\u8A2D\u5099",
               "type": "category",
+              "checked": false,
               "children": [
                 {
-                  "label": "電灯配線図",
+                  "label": "\u96FB\u706F\u914D\u7DDA\u56F3",
                   "type": "item",
                   "checked": true
                 },
                 {
-                  "label": "動力配線図",
+                  "label": "\u52D5\u529B\u914D\u7DDA\u56F3",
                   "type": "item",
                   "checked": false
                 },
                 {
-                  "label": "弱電設備図",
+                  "label": "\u5F31\u96FB\u8A2D\u5099\u56F3",
                   "type": "item",
                   "checked": true
                 },
                 {
-                  "label": "幹線系統図",
+                  "label": "\u5E79\u7DDA\u7CFB\u7D71\u56F3",
                   "type": "item",
                   "checked": false
                 },
                 {
-                  "label": "分電盤結線図",
+                  "label": "\u5206\u96FB\u76E4\u7D50\u7DDA\u56F3",
                   "type": "item",
                   "checked": true
                 }
               ]
             },
             {
-              "label": "機械設備",
+              "label": "\u6A5F\u68B0\u8A2D\u5099",
               "type": "category",
+              "checked": false,
               "children": [
                 {
-                  "label": "空調配管図",
+                  "label": "\u7A7A\u8ABF\u914D\u7BA1\u56F3",
                   "type": "item",
                   "checked": true
                 },
                 {
-                  "label": "換気設備図",
-                  "type": "item",
-                  "checked": false
-                },
-                {
-                  "label": "給排水設備図",
+                  "label": "\u63DB\u6C17\u8A2D\u5099\u56F3",
                   "type": "item",
                   "checked": true
                 },
                 {
-                  "label": "衛生設備図",
-                  "type": "item",
-                  "checked": false
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "label": "仕様書",
-      "type": "category",
-      "children": [
-        {
-          "label": "建築仕様",
-          "type": "category",
-          "children": [
-            {
-              "label": "外装仕様",
-              "type": "category",
-              "children": [
-                {
-                  "label": "外壁仕上げ",
+                  "label": "\u7D66\u6392\u6C34\u8A2D\u5099\u56F3",
                   "type": "item",
                   "checked": true
                 },
                 {
-                  "label": "屋根仕上げ",
-                  "type": "item",
-                  "checked": true
-                }
-              ]
-            },
-            {
-              "label": "内装仕様",
-              "type": "category",
-              "children": [
-                {
-                  "label": "床仕上げ",
-                  "type": "item",
-                  "checked": false
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "label": "設備仕様",
-          "type": "category",
-          "children": [
-            {
-              "label": "電気設備仕様",
-              "type": "category",
-              "children": [
-                {
-                  "label": "照明器具",
+                  "label": "\u885B\u751F\u8A2D\u5099\u56F3",
                   "type": "item",
                   "checked": true
                 }
@@ -230,83 +182,58 @@
       ]
     },
     {
-      "label": "テスト",
+      "label": "\u4ED5\u69D8\u66F8",
       "type": "category",
+      "checked": false,
       "children": [
         {
-          "label": "単体テスト",
+          "label": "\u5EFA\u7BC9\u4ED5\u69D8",
           "type": "category",
+          "checked": false,
           "children": [
             {
-              "label": "ドメイン層",
+              "label": "\u5916\u88C5\u4ED5\u69D8",
               "type": "category",
+              "checked": false,
               "children": [
                 {
-                  "label": "CheckItemテスト",
+                  "label": "\u5916\u58C1\u4ED5\u4E0A\u3052",
                   "type": "item",
                   "checked": true
                 },
                 {
-                  "label": "Documentテスト",
-                  "type": "item",
-                  "checked": false
-                },
-                {
-                  "label": "ValueObjectテスト",
+                  "label": "\u5C4B\u6839\u4ED5\u4E0A\u3052",
                   "type": "item",
                   "checked": true
                 }
               ]
             },
             {
-              "label": "リポジトリ層",
+              "label": "\u5185\u88C5\u4ED5\u69D8",
               "type": "category",
+              "checked": false,
               "children": [
                 {
-                  "label": "CheckItemRepositoryテスト",
+                  "label": "\u5E8A\u4ED5\u4E0A\u3052",
                   "type": "item",
                   "checked": true
-                },
-                {
-                  "label": "DocumentRepositoryテスト",
-                  "type": "item",
-                  "checked": false
                 }
               ]
             }
           ]
         },
         {
-          "label": "結合テスト",
+          "label": "\u8A2D\u5099\u4ED5\u69D8",
           "type": "category",
+          "checked": false,
           "children": [
             {
-              "label": "UI統合",
+              "label": "\u96FB\u6C17\u8A2D\u5099\u4ED5\u69D8",
               "type": "category",
+              "checked": false,
               "children": [
                 {
-                  "label": "資料登録フロー",
-                  "type": "item",
-                  "checked": false
-                },
-                {
-                  "label": "チェック項目表示",
-                  "type": "item",
-                  "checked": true
-                }
-              ]
-            },
-            {
-              "label": "データベース統合",
-              "type": "category",
-              "children": [
-                {
-                  "label": "マイグレーション確認",
-                  "type": "item",
-                  "checked": true
-                },
-                {
-                  "label": "シードデータ確認",
+                  "label": "\u7167\u660E\u5668\u5177",
                   "type": "item",
                   "checked": true
                 }
@@ -317,41 +244,138 @@
       ]
     },
     {
-      "label": "契約書類",
+      "label": "\u30C6\u30B9\u30C8",
       "type": "category",
+      "checked": false,
       "children": [
         {
-          "label": "請負契約",
+          "label": "\u5358\u4F53\u30C6\u30B9\u30C8",
           "type": "category",
+          "checked": false,
           "children": [
             {
-              "label": "工事請負契約書",
+              "label": "\u30C9\u30E1\u30A4\u30F3\u5C64",
+              "type": "category",
+              "checked": false,
+              "children": [
+                {
+                  "label": "CheckItem\u30C6\u30B9\u30C8",
+                  "type": "item",
+                  "checked": true
+                },
+                {
+                  "label": "Document\u30C6\u30B9\u30C8",
+                  "type": "item",
+                  "checked": false
+                },
+                {
+                  "label": "ValueObject\u30C6\u30B9\u30C8",
+                  "type": "item",
+                  "checked": true
+                }
+              ]
+            },
+            {
+              "label": "\u30EA\u30DD\u30B8\u30C8\u30EA\u5C64",
+              "type": "category",
+              "checked": false,
+              "children": [
+                {
+                  "label": "CheckItemRepository\u30C6\u30B9\u30C8",
+                  "type": "item",
+                  "checked": true
+                },
+                {
+                  "label": "DocumentRepository\u30C6\u30B9\u30C8",
+                  "type": "item",
+                  "checked": false
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "\u7D50\u5408\u30C6\u30B9\u30C8",
+          "type": "category",
+          "checked": false,
+          "children": [
+            {
+              "label": "UI\u7D71\u5408",
+              "type": "category",
+              "checked": false,
+              "children": [
+                {
+                  "label": "\u8CC7\u6599\u767B\u9332\u30D5\u30ED\u30FC",
+                  "type": "item",
+                  "checked": false
+                },
+                {
+                  "label": "\u30C1\u30A7\u30C3\u30AF\u9805\u76EE\u8868\u793A",
+                  "type": "item",
+                  "checked": true
+                }
+              ]
+            },
+            {
+              "label": "\u30C7\u30FC\u30BF\u30D9\u30FC\u30B9\u7D71\u5408",
+              "type": "category",
+              "checked": false,
+              "children": [
+                {
+                  "label": "\u30DE\u30A4\u30B0\u30EC\u30FC\u30B7\u30E7\u30F3\u78BA\u8A8D",
+                  "type": "item",
+                  "checked": true
+                },
+                {
+                  "label": "\u30B7\u30FC\u30C9\u30C7\u30FC\u30BF\u78BA\u8A8D",
+                  "type": "item",
+                  "checked": true
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "\u5951\u7D04\u66F8\u985E",
+      "type": "category",
+      "checked": false,
+      "children": [
+        {
+          "label": "\u8ACB\u8CA0\u5951\u7D04",
+          "type": "category",
+          "checked": false,
+          "children": [
+            {
+              "label": "\u5DE5\u4E8B\u8ACB\u8CA0\u5951\u7D04\u66F8",
               "type": "item",
               "checked": true
             },
             {
-              "label": "設計契約書",
+              "label": "\u8A2D\u8A08\u5951\u7D04\u66F8",
               "type": "item",
               "checked": true
             },
             {
-              "label": "監理契約書",
+              "label": "\u76E3\u7406\u5951\u7D04\u66F8",
               "type": "item",
               "checked": false
             }
           ]
         },
         {
-          "label": "変更契約",
+          "label": "\u5909\u66F4\u5951\u7D04",
           "type": "category",
+          "checked": false,
           "children": [
             {
-              "label": "第1回変更契約書",
+              "label": "\u7B2C1\u56DE\u5909\u66F4\u5951\u7D04\u66F8",
               "type": "item",
               "checked": false
             },
             {
-              "label": "第2回変更契約書",
+              "label": "\u7B2C2\u56DE\u5909\u66F4\u5951\u7D04\u66F8",
               "type": "item",
               "checked": false
             }
@@ -360,46 +384,49 @@
       ]
     },
     {
-      "label": "検査記録",
+      "label": "\u691C\u67FB\u8A18\u9332",
       "type": "category",
+      "checked": false,
       "children": [
         {
-          "label": "中間検査",
+          "label": "\u4E2D\u9593\u691C\u67FB",
           "type": "category",
+          "checked": false,
           "children": [
             {
-              "label": "配筋検査記録",
+              "label": "\u914D\u7B4B\u691C\u67FB\u8A18\u9332",
               "type": "item",
               "checked": true
             },
             {
-              "label": "躯体検査記録",
+              "label": "\u8EAF\u4F53\u691C\u67FB\u8A18\u9332",
               "type": "item",
               "checked": true
             },
             {
-              "label": "防水検査記録",
+              "label": "\u9632\u6C34\u691C\u67FB\u8A18\u9332",
               "type": "item",
               "checked": false
             }
           ]
         },
         {
-          "label": "完了検査",
+          "label": "\u5B8C\u4E86\u691C\u67FB",
           "type": "category",
+          "checked": false,
           "children": [
             {
-              "label": "建築確認検査済証",
+              "label": "\u5EFA\u7BC9\u78BA\u8A8D\u691C\u67FB\u6E08\u8A3C",
               "type": "item",
               "checked": false
             },
             {
-              "label": "消防検査済証",
+              "label": "\u6D88\u9632\u691C\u67FB\u6E08\u8A3C",
               "type": "item",
               "checked": false
             },
             {
-              "label": "保健所検査済証",
+              "label": "\u4FDD\u5065\u6240\u691C\u67FB\u6E08\u8A3C",
               "type": "item",
               "checked": false
             }
@@ -408,55 +435,70 @@
       ]
     },
     {
-      "label": "施工記録",
+      "label": "\u65BD\u5DE5\u8A18\u9332",
       "type": "category",
+      "checked": false,
       "children": [
         {
-          "label": "写真管理",
+          "label": "\u5199\u771F\u7BA1\u7406",
           "type": "category",
+          "checked": false,
           "children": [
             {
-              "label": "着工前写真",
+              "label": "\u7740\u5DE5\u524D\u5199\u771F",
               "type": "item",
               "checked": true
             },
             {
-              "label": "基礎工事写真",
+              "label": "\u57FA\u790E\u5DE5\u4E8B\u5199\u771F",
               "type": "item",
               "checked": true
             },
             {
-              "label": "躯体工事写真",
+              "label": "\u8EAF\u4F53\u5DE5\u4E8B\u5199\u771F",
               "type": "item",
               "checked": true
             },
             {
-              "label": "仕上工事写真",
+              "label": "\u4ED5\u4E0A\u5DE5\u4E8B\u5199\u771F",
               "type": "item",
               "checked": false
             },
             {
-              "label": "竣工写真",
+              "label": "\u7AE3\u5DE5\u5199\u771F",
               "type": "item",
               "checked": false
             }
           ]
         },
         {
-          "label": "報告書",
+          "label": "\u5831\u544A\u66F8",
           "type": "category",
+          "checked": false,
           "children": [
             {
-              "label": "月次報告書",
+              "label": "\u6708\u6B21\u5831\u544A\u66F8",
               "type": "item",
               "checked": true
             },
             {
-              "label": "完成報告書",
+              "label": "\u5B8C\u6210\u5831\u544A\u66F8",
               "type": "item",
               "checked": false
             }
           ]
+        }
+      ]
+    },
+    {
+      "label": "\u8FFD\u52A0\u9805\u76EE",
+      "type": "category",
+      "checked": false,
+      "children": [
+        {
+          "label": "\u30C6\u30B9\u30C8\u9805\u76EE\uFF11",
+          "type": "item",
+          "checked": false
         }
       ]
     }

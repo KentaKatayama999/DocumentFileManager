@@ -3,9 +3,10 @@ using System.Linq;
 using System.Text.Json;
 using System.Windows;
 using DocumentFileManager.UI.Configuration;
+using DocumentFileManager.UI.Dialogs;
 using Microsoft.Extensions.Logging;
 
-namespace DocumentFileManager.UI;
+namespace DocumentFileManager.UI.Windows;
 
 /// <summary>
 /// UI設定ウィンドウ

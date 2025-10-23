@@ -9,6 +9,7 @@ using System.Windows.Media;
 using DocumentFileManager.Entities;
 using DocumentFileManager.Infrastructure.Repositories;
 using DocumentFileManager.UI.Configuration;
+using DocumentFileManager.UI.Dialogs;
 using DocumentFileManager.UI.Helpers;
 using DocumentFileManager.UI.Services;
 using DocumentFileManager.UI.ViewModels;
@@ -16,7 +17,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 
-namespace DocumentFileManager.UI;
+namespace DocumentFileManager.UI.Windows;
 
 /// <summary>
 /// Interaction logic for MainWindow.xaml
@@ -216,6 +217,159 @@ public partial class MainWindow : Window
         {
             _logger.LogError(ex, "設定ウィンドウの表示に失敗しました");
             MessageBox.Show($"設定ウィンドウの表示に失敗しました:\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
+    /// チェックリストエディターメニュークリック
+    /// </summary>
+    private void ChecklistEditorMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _logger.LogInformation("チェックリストエディターを開きます");
+
+            var editorLogger = _serviceProvider.GetRequiredService<ILogger<ChecklistEditorWindow>>();
+            var editorWindow = new ChecklistEditorWindow(editorLogger, GetProjectRoot())
+            {
+                Owner = this
+            };
+
+            editorWindow.ShowDialog();
+
+            _logger.LogInformation("チェックリストエディターを閉じました");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "チェックリストエディターの表示に失敗しました");
+            MessageBox.Show($"チェックリストエディターの表示に失敗しました:\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
+    /// 新規チェックリスト作成メニュークリック
+    /// </summary>
+    private async void CreateNewChecklistMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _logger.LogInformation("新規チェックリスト作成ダイアログを開きます");
+
+            // ファイル名入力ダイアログを表示
+            var inputDialog = new Window
+            {
+                Title = "新規チェックリスト作成",
+                Width = 450,
+                Height = 220,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = this,
+                ResizeMode = ResizeMode.NoResize
+            };
+
+            var stackPanel = new StackPanel { Margin = new Thickness(20) };
+            stackPanel.Children.Add(new TextBlock
+            {
+                Text = "新しいチェックリスト名を入力してください:",
+                Margin = new Thickness(0, 0, 0, 10)
+            });
+            stackPanel.Children.Add(new TextBlock
+            {
+                Text = "（例: 建築プロジェクト、設備点検など）",
+                FontSize = 11,
+                Foreground = Brushes.Gray,
+                Margin = new Thickness(0, 0, 0, 10)
+            });
+
+            var textBox = new TextBox { Margin = new Thickness(0, 0, 0, 20) };
+            stackPanel.Children.Add(textBox);
+
+            var buttonPanel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+            var okButton = new Button { Content = "作成", Width = 80, Margin = new Thickness(0, 0, 10, 0), IsDefault = true };
+            var cancelButton = new Button { Content = "キャンセル", Width = 80, IsCancel = true };
+
+            okButton.Click += (s, args) => { inputDialog.DialogResult = true; inputDialog.Close(); };
+            cancelButton.Click += (s, args) => { inputDialog.DialogResult = false; inputDialog.Close(); };
+
+            buttonPanel.Children.Add(okButton);
+            buttonPanel.Children.Add(cancelButton);
+            stackPanel.Children.Add(buttonPanel);
+
+            inputDialog.Content = stackPanel;
+            textBox.Focus();
+
+            bool? result = inputDialog.ShowDialog();
+
+            if (result == true && !string.IsNullOrWhiteSpace(textBox.Text))
+            {
+                var checklistName = textBox.Text.Trim();
+                _logger.LogInformation("新規チェックリストを作成: {ChecklistName}", checklistName);
+
+                // ファイル名を生成（checklist_xxx.json形式）
+                var safeFileName = string.Concat(checklistName.Split(Path.GetInvalidFileNameChars()));
+                var fileName = $"checklist_{safeFileName}.json";
+
+                var projectRoot = GetProjectRoot();
+                var filePath = Path.Combine(projectRoot, fileName);
+
+                // 既に同名のファイルが存在する場合は確認
+                if (File.Exists(filePath))
+                {
+                    var overwriteResult = MessageBox.Show(
+                        $"チェックリスト「{fileName}」は既に存在します。\n上書きしますか？",
+                        "確認",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Question);
+
+                    if (overwriteResult != MessageBoxResult.Yes)
+                    {
+                        return;
+                    }
+                }
+
+                // ChecklistSaverをサービスプロバイダーから取得
+                var checklistSaver = _serviceProvider.GetRequiredService<Infrastructure.Services.ChecklistSaver>();
+
+                // 空のチェックリストを作成
+                var emptyCheckItems = new List<CheckItem>();
+
+                // JSON形式で保存
+                await checklistSaver.SaveAsync(emptyCheckItems, filePath);
+
+                _logger.LogInformation("新規チェックリストファイルを作成しました: {FilePath}", filePath);
+
+                // 設定を更新して新しいチェックリストを使用
+                _pathSettings.SelectedChecklistFile = fileName;
+
+                // データベースの既存チェック項目をクリア（新しいチェックリスト用）
+                var existingItems = await _checkItemRepository.GetAllWithChildrenAsync();
+                foreach (var item in existingItems)
+                {
+                    await _checkItemRepository.DeleteAsync(item.Id);
+                }
+
+                _logger.LogInformation("既存のチェック項目をクリアしました");
+
+                // UIを再読み込み（空の状態）
+                CheckItemsContainer.Children.Clear();
+                CheckItemCountText.Text = "0 件";
+
+                StatusText.Text = $"新規チェックリスト「{checklistName}」を作成しました";
+
+                MessageBox.Show(
+                    $"新規チェックリスト「{checklistName}」を作成しました。\n\nファイル: {fileName}\n\nアプリケーションを再起動してください。",
+                    "作成完了",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "新規チェックリストの作成に失敗しました");
+            MessageBox.Show(
+                $"新規チェックリストの作成に失敗しました:\n{ex.Message}",
+                "エラー",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
     }
 

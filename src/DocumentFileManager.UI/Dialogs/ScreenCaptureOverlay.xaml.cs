@@ -3,7 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 
-namespace DocumentFileManager.UI;
+namespace DocumentFileManager.UI.Dialogs;
 
 /// <summary>
 /// 画面キャプチャの範囲選択オーバーレイ

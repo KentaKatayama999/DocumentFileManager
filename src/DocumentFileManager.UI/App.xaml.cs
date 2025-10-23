@@ -5,6 +5,7 @@ using DocumentFileManager.Infrastructure.Repositories;
 using DocumentFileManager.UI.Configuration;
 using DocumentFileManager.UI.Helpers;
 using DocumentFileManager.UI.Services;
+using DocumentFileManager.UI.Windows;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

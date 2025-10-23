@@ -1,4 +1,4 @@
-﻿<Window x:Class="DocumentFileManager.UI.ChecklistWindow"
+﻿<Window x:Class="DocumentFileManager.UI.Windows.ChecklistWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -43,6 +43,18 @@
                         Padding="10,5"
                         Click="CaptureButton_Click"
                         ToolTip="アクティブウィンドウをキャプチャして保存"/>
+                <Button x:Name="AddItemButton"
+                        Content="➕ 項目追加"
+                        Padding="10,5"
+                        Margin="5,0,0,0"
+                        Click="AddItemButton_Click"
+                        ToolTip="チェック項目を追加"/>
+                <Button x:Name="CreateNewChecklistButton"
+                        Content="📝 新規作成"
+                        Padding="10,5"
+                        Margin="5,0,0,0"
+                        Click="CreateNewChecklistButton_Click"
+                        ToolTip="新しいチェックリストファイルを作成"/>
             </StackPanel>
         </Border>
 

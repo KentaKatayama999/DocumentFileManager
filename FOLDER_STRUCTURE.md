@@ -33,6 +33,11 @@ DocumentFileManager/                 # リポジトリルート
 │   ├── ドメインモデル定義書.md
 │   ├── データ設計書.md
 │   └── 実装プラン.md
+├── scripts/                        # 開発用スクリプト
+│   ├── collect-samples.ps1        # サンプルファイル収集スクリプト
+│   ├── collect-samples-v2.ps1     # サンプルファイル収集スクリプト v2
+│   ├── list-files.ps1             # ファイル一覧出力スクリプト
+│   └── test-copy.ps1              # テストコピースクリプト
 ├── test-files/                     # ビューアテスト用サンプルファイル
 │   ├── images/                     # 画像ファイル
 │   ├── text/                       # テキストファイル
@@ -144,33 +149,44 @@ src/DocumentFileManager.UI/
 ├── Configuration/                  # 設定クラス
 │   ├── PathSettings.cs            # パス設定
 │   └── UISettings.cs              # UI設定
+├── Converters/                     # 値コンバーター
+│   └── NullToBoolConverter.cs     # NullからBoolへのコンバーター
+├── Dialogs/                        # ダイアログウィンドウ
+│   ├── ChecklistSelectionDialog.xaml  # チェックリスト選択ダイアログUI
+│   ├── ChecklistSelectionDialog.xaml.cs # チェックリスト選択ダイアログロジック
+│   ├── ScreenCaptureOverlay.xaml  # 画面キャプチャオーバーレイUI
+│   └── ScreenCaptureOverlay.xaml.cs # 画面キャプチャオーバーレイロジック
 ├── Helpers/                        # ヘルパークラス
 │   └── CheckItemUIBuilder.cs      # チェックリストUI構築ヘルパー
 ├── Services/                       # アプリケーションサービス
 │   ├── IDataIntegrityService.cs   # データ整合性サービスインターフェース
 │   ├── DataIntegrityService.cs    # データ整合性サービス実装
+│   ├── IFileMonitorService.cs     # ファイル監視サービスインターフェース
+│   ├── FileMonitorService.cs      # ファイル監視サービス実装
+│   ├── IntegrityReport.cs         # 整合性チェックレポート
+│   ├── ScreenCaptureService.cs    # 画面キャプチャサービス
 │   └── SettingsPersistence.cs     # 設定永続化サービス
-├── Models/                         # UIモデル
-│   └── IntegrityReport.cs         # 整合性チェックレポート
+├── ViewModels/                     # ViewModelクラス
+│   ├── CheckItemViewModel.cs      # チェック項目ViewModel
+│   └── CheckItemEditorViewModel.cs # チェック項目エディターViewModel
+├── Windows/                        # メインウィンドウ
+│   ├── MainWindow.xaml            # メインウィンドウUI
+│   ├── MainWindow.xaml.cs         # メインウィンドウロジック
+│   ├── ChecklistWindow.xaml       # チェックリストウィンドウUI
+│   ├── ChecklistWindow.xaml.cs    # チェックリストウィンドウロジック
+│   ├── ChecklistEditorWindow.xaml # チェックリストエディターウィンドウUI
+│   ├── ChecklistEditorWindow.xaml.cs # チェックリストエディターウィンドウロジック
+│   ├── SettingsWindow.xaml        # 設定ウィンドウUI
+│   ├── SettingsWindow.xaml.cs     # 設定ウィンドウロジック
+│   ├── IntegrityReportWindow.xaml # 整合性レポートウィンドウUI
+│   ├── IntegrityReportWindow.xaml.cs # 整合性レポートウィンドウロジック
+│   ├── CaptureImageViewerWindow.xaml # キャプチャ画像ビューアUI
+│   ├── CaptureImageViewerWindow.xaml.cs # キャプチャ画像ビューアロジック
+│   ├── ImagePreviewWindow.xaml    # 画像プレビューUI
+│   └── ImagePreviewWindow.xaml.cs # 画像プレビューロジック
 ├── App.xaml                        # アプリケーション定義
 ├── App.xaml.cs                     # アプリケーションロジック
 │   └── ※DI設定、Serilog設定、コマンドライン引数処理
-├── MainWindow.xaml                 # メインウィンドウUI
-├── MainWindow.xaml.cs              # メインウィンドウロジック
-├── ChecklistWindow.xaml            # チェックリストウィンドウUI
-├── ChecklistWindow.xaml.cs         # チェックリストウィンドウロジック
-├── SettingsWindow.xaml             # 設定ウィンドウUI
-├── SettingsWindow.xaml.cs          # 設定ウィンドウロジック
-├── IntegrityReportWindow.xaml      # 整合性レポートウィンドウUI
-├── IntegrityReportWindow.xaml.cs   # 整合性レポートウィンドウロジック
-├── ChecklistSelectionDialog.xaml  # チェックリスト選択ダイアログUI
-├── ChecklistSelectionDialog.xaml.cs # チェックリスト選択ダイアログロジック
-├── ScreenCaptureOverlay.xaml       # 画面キャプチャオーバーレイUI
-├── ScreenCaptureOverlay.xaml.cs    # 画面キャプチャオーバーレイロジック
-├── CaptureImageViewerWindow.xaml   # キャプチャ画像ビューアUI
-├── CaptureImageViewerWindow.xaml.cs # キャプチャ画像ビューアロジック
-├── ImagePreviewWindow.xaml         # 画像プレビューUI
-├── ImagePreviewWindow.xaml.cs      # 画像プレビューロジック
 ├── appsettings.json                # アプリケーション設定
 └── DocumentFileManager.UI.csproj   # プロジェクトファイル
 ```

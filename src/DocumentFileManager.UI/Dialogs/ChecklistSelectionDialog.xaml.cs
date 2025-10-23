@@ -2,7 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Input;
 
-namespace DocumentFileManager.UI;
+namespace DocumentFileManager.UI.Dialogs;
 
 /// <summary>
 /// チェックリスト選択ダイアログ

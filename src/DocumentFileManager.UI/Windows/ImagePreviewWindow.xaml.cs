@@ -4,7 +4,7 @@ using System.Windows;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 
-namespace DocumentFileManager.UI;
+namespace DocumentFileManager.UI.Windows;
 
 /// <summary>
 /// ImagePreviewWindow.xaml の相互作用ロジック

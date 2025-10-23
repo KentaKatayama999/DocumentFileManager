@@ -144,7 +144,7 @@ public partial class ViewerWindow : Window
     /// <summary>
     /// ウィンドウが読み込まれたときにファイルを読み込み
     /// </summary>
-    private void ViewerWindow_Loaded(object sender, RoutedEventArgs e)
+    private async void ViewerWindow_Loaded(object sender, RoutedEventArgs e)
     {
         try
         {
@@ -156,7 +156,7 @@ public partial class ViewerWindow : Window
                 return;
             }
 
-            LoadFile(_filePath);
+            await LoadFile(_filePath);
         }
         catch (Exception ex)
         {
@@ -169,7 +169,7 @@ public partial class ViewerWindow : Window
     /// <summary>
     /// ファイルを読み込み（拡張子に応じて振り分け）
     /// </summary>
-    private void LoadFile(string filePath)
+    private async Task LoadFile(string filePath)
     {
         var extension = Path.GetExtension(filePath).ToLower();
 
@@ -186,7 +186,7 @@ public partial class ViewerWindow : Window
         else if (ShouldOpenWithDefault(extension))
         {
             // Windows標準プログラムで開く（Viewerウィンドウは最小化して保持）
-            _externalWindowHandle = OpenWithDefaultProgram(filePath);
+            _externalWindowHandle = await OpenWithDefaultProgram(filePath);
 
             // ウィンドウを非表示にして最小化
             WindowState = WindowState.Minimized;
@@ -300,7 +300,7 @@ public partial class ViewerWindow : Window
     /// <summary>
     /// Windows標準プログラムで開く（ウィンドウハンドルを取得）
     /// </summary>
-    private IntPtr OpenWithDefaultProgram(string filePath)
+    private async Task<IntPtr> OpenWithDefaultProgram(string filePath)
     {
         try
         {
@@ -394,7 +394,7 @@ public partial class ViewerWindow : Window
                     // Continue searching
                 }
 
-                System.Threading.Thread.Sleep(pollIntervalMs);
+                await Task.Delay(pollIntervalMs);
             }
 
             // タイムアウト
