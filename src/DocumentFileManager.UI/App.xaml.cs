@@ -1,16 +1,10 @@
 ﻿using System.IO;
 using System.Windows;
-using DocumentFileManager.Infrastructure.Data;
-using DocumentFileManager.Infrastructure.Repositories;
 using DocumentFileManager.UI.Configuration;
-using DocumentFileManager.UI.Helpers;
-using DocumentFileManager.UI.Services;
 using DocumentFileManager.UI.Windows;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Serilog;
 using System.Linq;
 
@@ -33,7 +27,6 @@ public partial class App : Application
         {
             // コマンドライン引数で指定された場合
             documentRootPath = Path.GetFullPath(args[1]);
-            Log.Information("コマンドライン引数からdocumentRootPathを取得: {DocumentRootPath}", documentRootPath);
         }
         else
         {
@@ -41,10 +34,9 @@ public partial class App : Application
             var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
             var pathSegments = Enumerable.Repeat("..", 5).ToArray();
             documentRootPath = Path.GetFullPath(Path.Combine(new[] { baseDirectory }.Concat(pathSegments).ToArray()));
-            Log.Warning("コマンドライン引数がありません。デフォルトパスを使用: {DocumentRootPath}", documentRootPath);
         }
 
-        // PathSettings を読み込み（早期に必要なため、Host.CreateDefaultBuilder前に読み込み）
+        // PathSettings を読み込み（appsettings.jsonから）
         var configuration = new ConfigurationBuilder()
             .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
             .AddJsonFile("appsettings.json", optional: false)
@@ -54,85 +46,11 @@ public partial class App : Application
         var pathSettings = new PathSettings();
         configuration.GetSection("PathSettings").Bind(pathSettings);
 
-        // Serilog設定（documentRootPath配下のLogsフォルダに出力）
-        var logsFolder = Path.Combine(documentRootPath, pathSettings.LogsFolder);
-        Directory.CreateDirectory(logsFolder);
+        // AppInitializerを使用してホストを作成
+        _host = AppInitializer.CreateHost(documentRootPath, pathSettings);
 
-        Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Debug()
-            .WriteTo.Console()
-            .WriteTo.File(
-                Path.Combine(logsFolder, "app-.log"),
-                rollingInterval: RollingInterval.Day,
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
-            .CreateLogger();
-
-        Log.Information("アプリケーションを起動しています...");
-
-        // グローバル例外ハンドラ
-        AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
-        {
-            var exception = args.ExceptionObject as Exception;
-            Log.Fatal(exception, "未処理の例外が発生しました");
-        };
-
-        DispatcherUnhandledException += (sender, args) =>
-        {
-            Log.Error(args.Exception, "UI スレッドで未処理の例外が発生しました");
-            MessageBox.Show(
-                $"エラーが発生しました:\n{args.Exception.Message}\n\n詳細はログファイルを確認してください。",
-                "エラー",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
-            args.Handled = true;
-        };
-
-        _host = Host.CreateDefaultBuilder()
-            .UseSerilog() // Serilog を Microsoft.Extensions.Logging に統合
-            .ConfigureServices((context, services) =>
-            {
-                // PathSettings の登録
-                var pathSettings = new PathSettings();
-                context.Configuration.GetSection("PathSettings").Bind(pathSettings);
-                services.AddSingleton(pathSettings);
-
-                // documentRootPath をサービスとして登録（依存性注入で使用）
-                services.AddSingleton(_ => documentRootPath);
-
-                // DbContext の登録（SQLite）
-                services.AddDbContext<DocumentManagerContext>(options =>
-                {
-                    var dbPath = Path.Combine(documentRootPath, pathSettings.DatabaseName);
-                    Log.Information("DBパス: {DbPath}", dbPath);
-                    options.UseSqlite($"Data Source={dbPath}");
-                });
-
-                // UI設定の登録
-                var uiSettings = new UISettings();
-                context.Configuration.GetSection("UISettings").Bind(uiSettings);
-                services.AddSingleton(uiSettings);
-                Log.Information("UI設定を読み込みました");
-
-                // リポジトリの登録
-                services.AddScoped<ICheckItemRepository, CheckItemRepository>();
-                services.AddScoped<IDocumentRepository, DocumentRepository>();
-                services.AddScoped<ICheckItemDocumentRepository, CheckItemDocumentRepository>();
-
-                // サービスの登録
-                services.AddScoped<IDataIntegrityService, DataIntegrityService>();
-                services.AddSingleton<SettingsPersistence>();
-                services.AddScoped<Infrastructure.Services.ChecklistLoader>();
-                services.AddScoped<Infrastructure.Services.ChecklistSaver>();
-
-                // UIヘルパーの登録
-                services.AddScoped<CheckItemUIBuilder>();
-
-                // ウィンドウの登録
-                services.AddTransient<MainWindow>();
-            })
-            .Build();
-
-        Log.Information("アプリケーションの初期化が完了しました");
+        // グローバル例外ハンドラを設定
+        AppInitializer.SetupGlobalExceptionHandlers(this);
     }
 
     protected override async void OnStartup(StartupEventArgs e)
@@ -142,22 +60,8 @@ public partial class App : Application
             Log.Information("アプリケーション起動処理を開始します");
             await _host.StartAsync();
 
-            // データベースマイグレーション自動適用（デフォルトのチェックリストファイルを使用）
-            using (var scope = _host.Services.CreateScope())
-            {
-                Log.Information("データベースマイグレーションを確認しています...");
-                var dbContext = scope.ServiceProvider.GetRequiredService<DocumentManagerContext>();
-                await dbContext.Database.MigrateAsync();
-                Log.Information("データベースマイグレーションが完了しました");
-
-                // シードデータ投入（デフォルトのチェックリストファイルを使用）
-                var loggerFactory = scope.ServiceProvider.GetRequiredService<ILoggerFactory>();
-                var pathSettings = scope.ServiceProvider.GetRequiredService<PathSettings>();
-                var documentRoot = scope.ServiceProvider.GetRequiredService<string>();  // documentRootPathを取得
-                Log.Information("シードデータ投入用documentRoot: {DocumentRoot}", documentRoot);
-                var seeder = new DataSeeder(dbContext, loggerFactory, documentRoot, pathSettings.SelectedChecklistFile);
-                await seeder.SeedAsync();
-            }
+            // AppInitializerを使用してデータベース初期化
+            await AppInitializer.InitializeDatabaseAsync(_host);
 
             // MainWindow を DI コンテナから取得して表示
             var mainWindow = _host.Services.GetRequiredService<MainWindow>();
