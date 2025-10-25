@@ -79,47 +79,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            // プロジェクトルートを取得
-            var projectRoot = GetProjectRoot();
-
-            // チェックリストファイルが設定されているか、ファイルが存在するかをチェック
-            var checklistFilePath = Path.Combine(projectRoot, _pathSettings.SelectedChecklistFile);
-            var shouldShowDialog = string.IsNullOrEmpty(_pathSettings.SelectedChecklistFile) ||
-                                    !File.Exists(checklistFilePath);
-
-            if (shouldShowDialog)
-            {
-                _logger.LogInformation("Window_Loaded: チェックリスト選択ダイアログを表示します（初回起動または設定が無効）");
-
-                // チェックリスト選択ダイアログを表示
-                var selectionDialog = new ChecklistSelectionDialog(projectRoot, _pathSettings)
-                {
-                    Owner = this
-                };
-                var dialogResult = selectionDialog.ShowDialog();
-
-                if (dialogResult != true || string.IsNullOrEmpty(selectionDialog.SelectedChecklistFileName))
-                {
-                    _logger.LogWarning("チェックリストが選択されませんでした。デフォルトのチェックリストを使用します。");
-                }
-                else
-                {
-                    // 選択されたチェックリストファイル名をPathSettingsに設定
-                    _pathSettings.SelectedChecklistFile = selectionDialog.SelectedChecklistFileName;
-                    _logger.LogInformation("選択されたチェックリスト: {FileName}", _pathSettings.SelectedChecklistFile);
-
-                    // 設定を保存（projectRootに保存）
-                    var settingsPersistence = _serviceProvider.GetRequiredService<Services.SettingsPersistence>();
-                    var appsettingsPath = Path.Combine(projectRoot, "appsettings.json");
-                    await settingsPersistence.SavePathSettingsAsync(_pathSettings, appsettingsPath);
-                    _logger.LogInformation("設定を保存しました");
-                }
-            }
-            else
-            {
-                _logger.LogInformation("Window_Loaded: 既存のチェックリスト設定を使用します: {FileName}", _pathSettings.SelectedChecklistFile);
-            }
-
+            _logger.LogInformation("Window_Loaded: チェックリスト設定: {FileName}", _pathSettings.SelectedChecklistFile);
             _logger.LogInformation("Window_Loaded: 自動読み込みを開始します");
             await LoadDocumentsAsync();
             _logger.LogInformation("Window_Loaded: 資料の読み込みが完了しました");

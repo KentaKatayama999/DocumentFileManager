@@ -124,7 +124,11 @@ public static class AppInitializer
         var documentRoot = scope.ServiceProvider.GetRequiredService<string>();
         Log.Information("シードデータ投入用documentRoot: {DocumentRoot}", documentRoot);
 
-        var seeder = new DataSeeder(dbContext, loggerFactory, documentRoot, pathSettings.SelectedChecklistFile);
+        // ChecklistDefinitionsFolder内の完全パスを構築
+        var checklistFullPath = Path.Combine(pathSettings.ChecklistDefinitionsFolder, pathSettings.SelectedChecklistFile);
+        Log.Information("チェックリストファイルパス: {ChecklistPath}", checklistFullPath);
+
+        var seeder = new DataSeeder(dbContext, loggerFactory, documentRoot, checklistFullPath);
         await seeder.SeedAsync();
     }
 
