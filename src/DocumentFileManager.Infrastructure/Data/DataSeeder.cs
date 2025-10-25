@@ -112,10 +112,10 @@ public class DataSeeder
 
         try
         {
-            // ChecklistLoaderでJSONを読み込み（タイムアウト10秒）
+            // ChecklistLoaderでJSONを読み込み（1秒おきに10回試行）
             var checklistLogger = _loggerFactory.CreateLogger<ChecklistLoader>();
             var loader = new ChecklistLoader(checklistLogger);
-            var definitions = await loader.LoadAsync(checklistPath, timeoutSeconds: 10);
+            var definitions = await loader.LoadAsync(checklistPath, maxRetries: 10, retryIntervalMs: 1000);
 
             var stats = loader.GetStatistics(definitions);
             _logger.LogInformation("JSON統計: 分類={Categories}件, 項目={Items}件, チェック済={Checked}件",
@@ -144,9 +144,9 @@ public class DataSeeder
         {
             _logger.LogWarning("チェックリストファイルが見つかりません: {Message}", ex.Message);
         }
-        catch (TimeoutException ex)
+        catch (IOException ex)
         {
-            _logger.LogWarning("チェックリストファイルの読み込みがタイムアウトしました: {Message}", ex.Message);
+            _logger.LogWarning("チェックリストファイルの読み込みに失敗しました: {Message}", ex.Message);
         }
         catch (Exception ex)
         {

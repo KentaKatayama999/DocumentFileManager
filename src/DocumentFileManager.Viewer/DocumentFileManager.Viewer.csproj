@@ -18,7 +18,7 @@
 
     <!-- NuGet パッケージ設定 -->
     <PackageId>DocumentFileManager.Viewer</PackageId>
-    <Version>1.1.10</Version>
+    <Version>1.1.11</Version>
     <Authors>DocumentFileManager Contributors</Authors>
     <Company>DocumentFileManager</Company>
     <Description>Integrated document viewer component for DocumentFileManager. Supports various file formats including images, PDF, text, Office documents, CAD files, and email files with automatic window positioning.</Description>

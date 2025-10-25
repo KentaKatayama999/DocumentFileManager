@@ -22,70 +22,104 @@ public class ChecklistLoader
     /// JSONファイルからチェック項目定義を読み込む
     /// </summary>
     /// <param name="jsonFilePath">checklist.json のパス</param>
-    /// <param name="timeoutSeconds">タイムアウト時間（秒）</param>
+    /// <param name="maxRetries">最大リトライ回数（デフォルト10回）</param>
+    /// <param name="retryIntervalMs">リトライ間隔（ミリ秒、デフォルト1000ms = 1秒）</param>
     /// <returns>チェック項目定義のリスト</returns>
-    public async Task<List<CheckItemDefinition>> LoadAsync(string jsonFilePath, int timeoutSeconds = 10)
+    public async Task<List<CheckItemDefinition>> LoadAsync(string jsonFilePath, int maxRetries = 10, int retryIntervalMs = 1000)
     {
-        _logger.LogInformation("チェック項目定義を読み込みます: {FilePath} (タイムアウト: {Timeout}秒)", jsonFilePath, timeoutSeconds);
+        _logger.LogInformation("チェック項目定義を読み込みます: {FilePath} (最大{MaxRetries}回試行、{Interval}ms間隔)",
+            jsonFilePath, maxRetries, retryIntervalMs);
 
-        var timeout = TimeSpan.FromSeconds(timeoutSeconds);
-
-        try
+        // ファイルの存在確認を1秒おきに10回試行
+        bool fileExists = false;
+        for (int i = 1; i <= maxRetries; i++)
         {
-            // File.Existsもタイムアウト対象にする（ネットワークパスの場合に重要）
-            var existsTask = Task.Run(() => File.Exists(jsonFilePath));
-            bool fileExists;
+            _logger.LogInformation("ファイル存在確認: {Attempt}/{MaxRetries}回目", i, maxRetries);
 
             try
             {
-                fileExists = await existsTask.WaitAsync(timeout);
+                var existsTask = Task.Run(() => File.Exists(jsonFilePath));
+                fileExists = await existsTask.WaitAsync(TimeSpan.FromMilliseconds(retryIntervalMs));
+
+                if (fileExists)
+                {
+                    _logger.LogInformation("ファイルが見つかりました（{Attempt}回目）", i);
+                    break;
+                }
+                else
+                {
+                    _logger.LogWarning("ファイルが見つかりません（{Attempt}/{MaxRetries}回目）", i, maxRetries);
+                }
             }
             catch (TimeoutException)
             {
-                _logger.LogError("チェックリストファイルの存在確認がタイムアウトしました: {FilePath} ({Timeout}秒)", jsonFilePath, timeoutSeconds);
-                throw new TimeoutException($"チェックリストファイルの存在確認がタイムアウトしました ({timeoutSeconds}秒): {jsonFilePath}");
+                _logger.LogWarning("ファイル存在確認がタイムアウトしました（{Attempt}/{MaxRetries}回目、{Interval}ms）",
+                    i, maxRetries, retryIntervalMs);
             }
 
-            if (!fileExists)
+            // 最後の試行でない場合は待機
+            if (i < maxRetries)
             {
-                _logger.LogError("checklist.json が見つかりません: {FilePath}", jsonFilePath);
-                throw new FileNotFoundException($"checklist.json が見つかりません: {jsonFilePath}");
+                await Task.Delay(retryIntervalMs);
             }
+        }
 
-            // ファイル読み込みもタイムアウト対象にする
-            var readTask = File.ReadAllTextAsync(jsonFilePath);
-            string json;
+        if (!fileExists)
+        {
+            _logger.LogError("checklist.json が見つかりません（{MaxRetries}回試行後）: {FilePath}", maxRetries, jsonFilePath);
+            throw new FileNotFoundException($"checklist.json が見つかりません（{maxRetries}回試行後）: {jsonFilePath}");
+        }
+
+        // ファイル読み込みも同様にリトライ
+        string? json = null;
+        for (int i = 1; i <= maxRetries; i++)
+        {
+            _logger.LogInformation("ファイル読み込み: {Attempt}/{MaxRetries}回目", i, maxRetries);
 
             try
             {
-                json = await readTask.WaitAsync(timeout);
+                var readTask = File.ReadAllTextAsync(jsonFilePath);
+                json = await readTask.WaitAsync(TimeSpan.FromMilliseconds(retryIntervalMs));
+
+                if (!string.IsNullOrEmpty(json))
+                {
+                    _logger.LogInformation("ファイルを読み込みました（{Attempt}回目、{Length}文字）", i, json.Length);
+                    break;
+                }
             }
             catch (TimeoutException)
             {
-                _logger.LogError("チェックリストファイルの読み込みがタイムアウトしました: {FilePath} ({Timeout}秒)", jsonFilePath, timeoutSeconds);
-                throw new TimeoutException($"チェックリストファイルの読み込みがタイムアウトしました ({timeoutSeconds}秒): {jsonFilePath}");
+                _logger.LogWarning("ファイル読み込みがタイムアウトしました（{Attempt}/{MaxRetries}回目、{Interval}ms）",
+                    i, maxRetries, retryIntervalMs);
             }
 
-            var root = JsonSerializer.Deserialize<ChecklistRoot>(json, new JsonSerializerOptions
+            // 最後の試行でない場合は待機
+            if (i < maxRetries)
             {
-                PropertyNameCaseInsensitive = true,
-                ReadCommentHandling = JsonCommentHandling.Skip
-            });
-
-            if (root == null || root.CheckItems == null || root.CheckItems.Count == 0)
-            {
-                _logger.LogWarning("チェック項目定義が空です");
-                return new List<CheckItemDefinition>();
+                await Task.Delay(retryIntervalMs);
             }
-
-            _logger.LogInformation("{Count} 件の大分類を読み込みました", root.CheckItems.Count);
-            return root.CheckItems;
         }
-        catch (TimeoutException)
+
+        if (string.IsNullOrEmpty(json))
         {
-            // 既にログ出力済みなので、そのまま再スロー
-            throw;
+            _logger.LogError("ファイルの読み込みに失敗しました（{MaxRetries}回試行後）: {FilePath}", maxRetries, jsonFilePath);
+            throw new IOException($"ファイルの読み込みに失敗しました（{maxRetries}回試行後）: {jsonFilePath}");
         }
+
+        var root = JsonSerializer.Deserialize<ChecklistRoot>(json, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            ReadCommentHandling = JsonCommentHandling.Skip
+        });
+
+        if (root == null || root.CheckItems == null || root.CheckItems.Count == 0)
+        {
+            _logger.LogWarning("チェック項目定義が空です");
+            return new List<CheckItemDefinition>();
+        }
+
+        _logger.LogInformation("{Count} 件の大分類を読み込みました", root.CheckItems.Count);
+        return root.CheckItems;
     }
 
     /// <summary>
