@@ -33,6 +33,11 @@ public partial class SettingsWindow : Window
         // 現在のチェックリストを表示
         CurrentChecklistText.Text = _pathSettings.SelectedChecklistFile;
 
+        // チェックリスト定義フォルダを表示
+        ChecklistDefinitionsFolderText.Text = string.IsNullOrEmpty(_pathSettings.ChecklistDefinitionsFolder)
+            ? "(未設定 - プロジェクトルートを使用)"
+            : _pathSettings.ChecklistDefinitionsFolder;
+
         _logger.LogInformation("設定ウィンドウを開きました");
     }
 
@@ -278,5 +283,102 @@ public partial class SettingsWindow : Window
     private bool ValidateRgb(int r, int g, int b)
     {
         return r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255;
+    }
+
+    /// <summary>
+    /// チェックリスト定義フォルダ選択ボタンクリック
+    /// </summary>
+    private void BrowseChecklistFolderButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _logger.LogInformation("チェックリスト定義フォルダ選択ボタンがクリックされました");
+
+            // OpenFileDialogをフォルダ選択モードで使用
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "チェックリスト定義ファイルの共用フォルダを選択",
+                FileName = "フォルダ選択",
+                Filter = "フォルダ|*.none",
+                CheckFileExists = false,
+                CheckPathExists = true
+            };
+
+            // 現在のフォルダがあれば初期ディレクトリに設定
+            if (!string.IsNullOrEmpty(_pathSettings.ChecklistDefinitionsFolder) &&
+                Directory.Exists(_pathSettings.ChecklistDefinitionsFolder))
+            {
+                dialog.InitialDirectory = _pathSettings.ChecklistDefinitionsFolder;
+            }
+
+            if (dialog.ShowDialog() == true)
+            {
+                // 選択されたファイルのディレクトリを取得
+                var selectedFolder = Path.GetDirectoryName(dialog.FileName);
+
+                if (!string.IsNullOrEmpty(selectedFolder) && Directory.Exists(selectedFolder))
+                {
+                    _pathSettings.ChecklistDefinitionsFolder = selectedFolder;
+                    ChecklistDefinitionsFolderText.Text = selectedFolder;
+
+                    _logger.LogInformation("チェックリスト定義フォルダを設定しました: {Folder}", selectedFolder);
+
+                    MessageBox.Show(
+                        $"フォルダを設定しました:\n{selectedFolder}\n\n設定を保存してください。",
+                        "フォルダ選択",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "フォルダ選択中にエラーが発生しました");
+            MessageBox.Show(
+                $"フォルダの選択に失敗しました:\n{ex.Message}",
+                "エラー",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
+    /// チェックリスト定義フォルダクリアボタンクリック
+    /// </summary>
+    private void ClearChecklistFolderButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _logger.LogInformation("チェックリスト定義フォルダクリアボタンがクリックされました");
+
+            var result = MessageBox.Show(
+                "チェックリスト定義フォルダの設定をクリアしますか？\n（プロジェクトルートを使用するようになります）",
+                "確認",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                _pathSettings.ChecklistDefinitionsFolder = string.Empty;
+                ChecklistDefinitionsFolderText.Text = "(未設定 - プロジェクトルートを使用)";
+
+                _logger.LogInformation("チェックリスト定義フォルダをクリアしました");
+
+                MessageBox.Show(
+                    "フォルダ設定をクリアしました。\n設定を保存してください。",
+                    "クリア完了",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "フォルダクリア中にエラーが発生しました");
+            MessageBox.Show(
+                $"フォルダのクリアに失敗しました:\n{ex.Message}",
+                "エラー",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
     }
 }

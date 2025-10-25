@@ -230,7 +230,8 @@ public partial class MainWindow : Window
             _logger.LogInformation("チェックリストエディターを開きます");
 
             var editorLogger = _serviceProvider.GetRequiredService<ILogger<ChecklistEditorWindow>>();
-            var editorWindow = new ChecklistEditorWindow(editorLogger, GetProjectRoot())
+            var pathSettings = _serviceProvider.GetRequiredService<PathSettings>();
+            var editorWindow = new ChecklistEditorWindow(editorLogger, pathSettings, GetProjectRoot())
             {
                 Owner = this
             };

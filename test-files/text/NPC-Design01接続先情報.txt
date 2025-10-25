@@ -1,0 +1,10 @@
+・接続先IP
+   172.31.7.4
+
+・NPC管理者用ユーザー/パスワード   ※NPC管理者用なのでこのユーザー、パスワードはSNCには教えないでください。
+    Administrator/Nakashima5111
+
+・SNC用ユーザー/パスワード
+    SNCAdmin/Snc8111
+
+

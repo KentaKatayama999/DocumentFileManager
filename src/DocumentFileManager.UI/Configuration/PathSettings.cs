@@ -26,6 +26,14 @@ public class PathSettings
     public string SelectedChecklistFile { get; set; } = "checklist.json";
 
     /// <summary>
+    /// チェックリスト定義ファイルの共用フォルダパス
+    /// </summary>
+    /// <remarks>
+    /// 空文字列の場合はプロジェクトルートを使用します
+    /// </remarks>
+    public string ChecklistDefinitionsFolder { get; set; } = string.Empty;
+
+    /// <summary>
     /// 設定ファイル名
     /// </summary>
     public string SettingsFile { get; set; } = "appsettings.json";

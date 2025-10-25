@@ -104,6 +104,20 @@
                             <TextBlock Text="" Width="150"/>
                             <Button x:Name="ChangeChecklistButton" Content="チェックリストを変更" Width="150" Click="ChangeChecklistButton_Click"/>
                         </StackPanel>
+
+                        <!-- チェックリスト定義フォルダ設定 -->
+                        <Separator Margin="0,10"/>
+                        <TextBlock Text="チェックリスト定義ファイルの共用フォルダ" FontWeight="Bold" Margin="0,10,0,5"/>
+                        <TextBlock Text="※ 空の場合はプロジェクトルートを使用します" FontSize="10" Foreground="Gray" Margin="0,0,0,5"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="フォルダパス:" Width="150" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="ChecklistDefinitionsFolderText" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="300"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="" Width="150"/>
+                            <Button x:Name="BrowseChecklistFolderButton" Content="フォルダを選択..." Width="120" Margin="0,0,5,0" Click="BrowseChecklistFolderButton_Click"/>
+                            <Button x:Name="ClearChecklistFolderButton" Content="クリア" Width="80" Click="ClearChecklistFolderButton_Click"/>
+                        </StackPanel>
                     </StackPanel>
                 </GroupBox>
 

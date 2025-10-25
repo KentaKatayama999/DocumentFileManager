@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using DocumentFileManager.Infrastructure.Models;
+using DocumentFileManager.UI.Configuration;
 using DocumentFileManager.UI.ViewModels;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
@@ -17,13 +18,15 @@ public partial class ChecklistEditorWindow : Window
 {
     private readonly ILogger<ChecklistEditorWindow> _logger;
     private readonly string _projectRoot;
+    private readonly PathSettings _pathSettings;
     private string? _currentFilePath;
     private ObservableCollection<CheckItemEditorViewModel> _rootItems = new();
 
-    public ChecklistEditorWindow(ILogger<ChecklistEditorWindow> logger, string projectRoot)
+    public ChecklistEditorWindow(ILogger<ChecklistEditorWindow> logger, PathSettings pathSettings, string projectRoot)
     {
         _logger = logger;
         _projectRoot = projectRoot;
+        _pathSettings = pathSettings;
 
         InitializeComponent();
 
@@ -39,11 +42,16 @@ public partial class ChecklistEditorWindow : Window
     {
         try
         {
+            // 共用フォルダが設定されていればそれを使用、なければプロジェクトルート
+            var initialDirectory = string.IsNullOrEmpty(_pathSettings.ChecklistDefinitionsFolder)
+                ? _projectRoot
+                : _pathSettings.ChecklistDefinitionsFolder;
+
             var dialog = new OpenFileDialog
             {
                 Title = "チェックリストファイルを選択",
                 Filter = "JSONファイル (*.json)|*.json|すべてのファイル (*.*)|*.*",
-                InitialDirectory = _projectRoot
+                InitialDirectory = initialDirectory
             };
 
             if (dialog.ShowDialog() == true)
@@ -119,11 +127,16 @@ public partial class ChecklistEditorWindow : Window
 
             if (string.IsNullOrEmpty(filePath))
             {
+                // 共用フォルダが設定されていればそれを使用、なければプロジェクトルート
+                var initialDirectory = string.IsNullOrEmpty(_pathSettings.ChecklistDefinitionsFolder)
+                    ? _projectRoot
+                    : _pathSettings.ChecklistDefinitionsFolder;
+
                 var dialog = new SaveFileDialog
                 {
                     Title = "チェックリストファイルを保存",
                     Filter = "JSONファイル (*.json)|*.json|すべてのファイル (*.*)|*.*",
-                    InitialDirectory = _projectRoot,
+                    InitialDirectory = initialDirectory,
                     FileName = "checklist.json"
                 };
 

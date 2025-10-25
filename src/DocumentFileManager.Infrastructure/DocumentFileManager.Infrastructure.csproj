@@ -8,7 +8,7 @@
 
     <!-- NuGet パッケージ設定 -->
     <PackageId>DocumentFileManager.Infrastructure</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <Authors>DocumentFileManager Contributors</Authors>
     <Company>DocumentFileManager</Company>
     <Description>Infrastructure layer library for DocumentFileManager. Provides database access, repository implementations, and data persistence using Entity Framework Core and SQLite.</Description>
