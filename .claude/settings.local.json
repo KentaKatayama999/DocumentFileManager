@@ -61,7 +61,8 @@
       "Bash(Select-String -Pattern \"エラー|成功|失敗\" -Context 1)",
       "Bash(git tag:*)",
       "Bash(dotnet nuget:*)",
-      "Bash(dotnet restore:*)"
+      "Bash(dotnet restore:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []

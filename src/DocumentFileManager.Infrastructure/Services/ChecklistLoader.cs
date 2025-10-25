@@ -22,32 +22,47 @@ public class ChecklistLoader
     /// JSONファイルからチェック項目定義を読み込む
     /// </summary>
     /// <param name="jsonFilePath">checklist.json のパス</param>
+    /// <param name="timeoutSeconds">タイムアウト時間（秒）</param>
     /// <returns>チェック項目定義のリスト</returns>
-    public async Task<List<CheckItemDefinition>> LoadAsync(string jsonFilePath)
+    public async Task<List<CheckItemDefinition>> LoadAsync(string jsonFilePath, int timeoutSeconds = 10)
     {
-        _logger.LogInformation("チェック項目定義を読み込みます: {FilePath}", jsonFilePath);
+        _logger.LogInformation("チェック項目定義を読み込みます: {FilePath} (タイムアウト: {Timeout}秒)", jsonFilePath, timeoutSeconds);
 
-        if (!File.Exists(jsonFilePath))
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+
+        try
         {
-            _logger.LogError("checklist.json が見つかりません: {FilePath}", jsonFilePath);
-            throw new FileNotFoundException($"checklist.json が見つかりません: {jsonFilePath}");
+            // File.Existsもタイムアウト対象にする（ネットワークパスの場合に重要）
+            var existsTask = Task.Run(() => File.Exists(jsonFilePath), cts.Token);
+            var fileExists = await existsTask;
+
+            if (!fileExists)
+            {
+                _logger.LogError("checklist.json が見つかりません: {FilePath}", jsonFilePath);
+                throw new FileNotFoundException($"checklist.json が見つかりません: {jsonFilePath}");
+            }
+
+            var json = await File.ReadAllTextAsync(jsonFilePath, cts.Token);
+            var root = JsonSerializer.Deserialize<ChecklistRoot>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                ReadCommentHandling = JsonCommentHandling.Skip
+            });
+
+            if (root == null || root.CheckItems == null || root.CheckItems.Count == 0)
+            {
+                _logger.LogWarning("チェック項目定義が空です");
+                return new List<CheckItemDefinition>();
+            }
+
+            _logger.LogInformation("{Count} 件の大分類を読み込みました", root.CheckItems.Count);
+            return root.CheckItems;
         }
-
-        var json = await File.ReadAllTextAsync(jsonFilePath);
-        var root = JsonSerializer.Deserialize<ChecklistRoot>(json, new JsonSerializerOptions
+        catch (OperationCanceledException)
         {
-            PropertyNameCaseInsensitive = true,
-            ReadCommentHandling = JsonCommentHandling.Skip
-        });
-
-        if (root == null || root.CheckItems == null || root.CheckItems.Count == 0)
-        {
-            _logger.LogWarning("チェック項目定義が空です");
-            return new List<CheckItemDefinition>();
+            _logger.LogError("チェックリストファイルの読み込みがタイムアウトしました: {FilePath} ({Timeout}秒)", jsonFilePath, timeoutSeconds);
+            throw new TimeoutException($"チェックリストファイルの読み込みがタイムアウトしました ({timeoutSeconds}秒): {jsonFilePath}");
         }
-
-        _logger.LogInformation("{Count} 件の大分類を読み込みました", root.CheckItems.Count);
-        return root.CheckItems;
     }
 
     /// <summary>

@@ -105,40 +105,53 @@ public class DataSeeder
     {
         _logger.LogInformation("チェック項目データをJSONと同期します");
 
-        var checklistPath = Path.Combine(_projectRoot, _checklistFile);
-        if (!File.Exists(checklistPath))
+        // _checklistFileは完全パスまたはファイル名の可能性がある
+        var checklistPath = Path.IsPathRooted(_checklistFile)
+            ? _checklistFile
+            : Path.Combine(_projectRoot, _checklistFile);
+
+        try
         {
-            _logger.LogWarning("{ChecklistFile} が見つかりません: {Path}", _checklistFile, checklistPath);
-            return;
+            // ChecklistLoaderでJSONを読み込み（タイムアウト10秒）
+            var checklistLogger = _loggerFactory.CreateLogger<ChecklistLoader>();
+            var loader = new ChecklistLoader(checklistLogger);
+            var definitions = await loader.LoadAsync(checklistPath, timeoutSeconds: 10);
+
+            var stats = loader.GetStatistics(definitions);
+            _logger.LogInformation("JSON統計: 分類={Categories}件, 項目={Items}件, チェック済={Checked}件",
+                stats.TotalCategories, stats.TotalItems, stats.CheckedItems);
+
+            // JSONに含まれる全パスを収集
+            var jsonPaths = new HashSet<string>();
+
+            // 階層構造を再帰的に同期
+            await SyncCheckItemsRecursiveAsync(definitions, null, null, jsonPaths);
+
+            // JSONにないDB項目を削除
+            var allDbItems = await _context.CheckItems.ToListAsync();
+            var itemsToDelete = allDbItems.Where(item => !jsonPaths.Contains(item.Path)).ToList();
+
+            if (itemsToDelete.Any())
+            {
+                _logger.LogInformation("JSONに存在しない {Count} 件のチェック項目を削除します", itemsToDelete.Count);
+                _context.CheckItems.RemoveRange(itemsToDelete);
+                await _context.SaveChangesAsync();
+            }
+
+            _logger.LogInformation("チェック項目データの同期が完了しました");
         }
-
-        // ChecklistLoaderでJSONを読み込み
-        var checklistLogger = _loggerFactory.CreateLogger<ChecklistLoader>();
-        var loader = new ChecklistLoader(checklistLogger);
-        var definitions = await loader.LoadAsync(checklistPath);
-
-        var stats = loader.GetStatistics(definitions);
-        _logger.LogInformation("JSON統計: 分類={Categories}件, 項目={Items}件, チェック済={Checked}件",
-            stats.TotalCategories, stats.TotalItems, stats.CheckedItems);
-
-        // JSONに含まれる全パスを収集
-        var jsonPaths = new HashSet<string>();
-
-        // 階層構造を再帰的に同期
-        await SyncCheckItemsRecursiveAsync(definitions, null, null, jsonPaths);
-
-        // JSONにないDB項目を削除
-        var allDbItems = await _context.CheckItems.ToListAsync();
-        var itemsToDelete = allDbItems.Where(item => !jsonPaths.Contains(item.Path)).ToList();
-
-        if (itemsToDelete.Any())
+        catch (FileNotFoundException ex)
         {
-            _logger.LogInformation("JSONに存在しない {Count} 件のチェック項目を削除します", itemsToDelete.Count);
-            _context.CheckItems.RemoveRange(itemsToDelete);
-            await _context.SaveChangesAsync();
+            _logger.LogWarning("チェックリストファイルが見つかりません: {Message}", ex.Message);
         }
-
-        _logger.LogInformation("チェック項目データの同期が完了しました");
+        catch (TimeoutException ex)
+        {
+            _logger.LogWarning("チェックリストファイルの読み込みがタイムアウトしました: {Message}", ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "チェック項目データの同期中にエラーが発生しました");
+        }
     }
 
     /// <summary>
