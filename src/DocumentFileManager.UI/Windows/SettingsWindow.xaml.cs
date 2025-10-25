@@ -137,7 +137,7 @@ public partial class SettingsWindow : Window
             _logger.LogInformation("チェックリスト変更ボタンがクリックされました");
 
             // チェックリスト選択ダイアログを表示
-            var selectionDialog = new ChecklistSelectionDialog(_documentRootPath)
+            var selectionDialog = new ChecklistSelectionDialog(_documentRootPath, _pathSettings)
             {
                 Owner = this
             };

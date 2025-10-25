@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using DocumentFileManager.UI.Configuration;
 
 namespace DocumentFileManager.UI.Dialogs;
 
@@ -25,11 +26,13 @@ public partial class ChecklistSelectionDialog : Window
     public string? SelectedChecklistFileName { get; private set; }
 
     private readonly string _projectRoot;
+    private readonly PathSettings? _pathSettings;
 
-    public ChecklistSelectionDialog(string projectRoot)
+    public ChecklistSelectionDialog(string projectRoot, PathSettings? pathSettings = null)
     {
         InitializeComponent();
         _projectRoot = projectRoot;
+        _pathSettings = pathSettings;
 
         LoadChecklistFiles();
     }
@@ -41,11 +44,16 @@ public partial class ChecklistSelectionDialog : Window
     {
         var checklistFiles = new List<ChecklistFileInfo>();
 
-        // プロジェクトルートから checklist*.json を検索
+        // ChecklistDefinitionsFolder が設定されている場合はそちらを優先、未設定の場合は _projectRoot を使用
+        var searchFolder = !string.IsNullOrEmpty(_pathSettings?.ChecklistDefinitionsFolder)
+            ? _pathSettings.ChecklistDefinitionsFolder
+            : _projectRoot;
+
+        // チェックリストファイルを検索
         var pattern = "checklist*.json";
-        if (Directory.Exists(_projectRoot))
+        if (Directory.Exists(searchFolder))
         {
-            var files = Directory.GetFiles(_projectRoot, pattern, SearchOption.TopDirectoryOnly);
+            var files = Directory.GetFiles(searchFolder, pattern, SearchOption.TopDirectoryOnly);
 
             foreach (var file in files)
             {
@@ -71,7 +79,7 @@ public partial class ChecklistSelectionDialog : Window
         if (!checklistFiles.Any())
         {
             MessageBox.Show(
-                $"チェックリストファイルが見つかりません。\n\nプロジェクトルート: {_projectRoot}\nパターン: {pattern}",
+                $"チェックリストファイルが見つかりません。\n\n検索フォルダ: {searchFolder}\nパターン: {pattern}",
                 "警告",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
@@ -79,7 +87,7 @@ public partial class ChecklistSelectionDialog : Window
             // デフォルトのchecklist.jsonを使う
             checklistFiles.Add(new ChecklistFileInfo
             {
-                FilePath = Path.Combine(_projectRoot, "checklist.json"),
+                FilePath = Path.Combine(searchFolder, "checklist.json"),
                 FileName = "checklist.json",
                 DisplayName = "デフォルト (checklist.json)"
             });

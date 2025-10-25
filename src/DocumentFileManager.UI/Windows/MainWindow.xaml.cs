@@ -92,7 +92,7 @@ public partial class MainWindow : Window
                 _logger.LogInformation("Window_Loaded: チェックリスト選択ダイアログを表示します（初回起動または設定が無効）");
 
                 // チェックリスト選択ダイアログを表示
-                var selectionDialog = new ChecklistSelectionDialog(projectRoot)
+                var selectionDialog = new ChecklistSelectionDialog(projectRoot, _pathSettings)
                 {
                     Owner = this
                 };
