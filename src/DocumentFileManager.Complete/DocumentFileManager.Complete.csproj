@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+
+    <!-- NuGet パッケージ設定 -->
+    <PackageId>DocumentFileManager.Complete</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>DocumentFileManager Contributors</Authors>
+    <Company>DocumentFileManager</Company>
+    <Description>Complete meta-package for DocumentFileManager. Installs all components including Domain, Infrastructure, UI, and Viewer. This is a convenience package that references all other DocumentFileManager packages.</Description>
+    <PackageTags>document-manager;meta-package;wpf;complete;all-in-one</PackageTags>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <PackageReadmeFile></PackageReadmeFile>
+    <RepositoryUrl>https://github.com/KentaKatayama999/DocumentFileManager</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 他のパッケージへの依存関係 -->
+    <ProjectReference Include="..\DocumentFileManager\DocumentFileManager.csproj" />
+    <ProjectReference Include="..\DocumentFileManager.Infrastructure\DocumentFileManager.Infrastructure.csproj" />
+    <ProjectReference Include="..\DocumentFileManager.UI\DocumentFileManager.UI.csproj" />
+    <ProjectReference Include="..\DocumentFileManager.Viewer\DocumentFileManager.Viewer.csproj" />
+  </ItemGroup>
+
+</Project>

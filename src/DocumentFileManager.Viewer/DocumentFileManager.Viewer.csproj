@@ -14,6 +14,20 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <IsPackable>true</IsPackable>
+
+    <!-- NuGet パッケージ設定 -->
+    <PackageId>DocumentFileManager.Viewer</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>DocumentFileManager Contributors</Authors>
+    <Company>DocumentFileManager</Company>
+    <Description>Integrated document viewer component for DocumentFileManager. Supports various file formats including images, PDF, text, Office documents, CAD files, and email files with automatic window positioning.</Description>
+    <PackageTags>document-viewer;pdf;office;cad;wpf;webview2</PackageTags>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <PackageReadmeFile></PackageReadmeFile>
+    <RepositoryUrl>https://github.com/KentaKatayama999/DocumentFileManager</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
 </Project>

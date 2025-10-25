@@ -17,6 +17,9 @@
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <IsPackable>true</IsPackable>
     <PackageReadmeFile></PackageReadmeFile>
+    <RepositoryUrl>https://github.com/KentaKatayama999/DocumentFileManager</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
