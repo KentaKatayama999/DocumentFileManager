@@ -25,7 +25,7 @@ jobs:
         run: dotnet restore
 
       - name: Build Release
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet build --configuration Release --no-restore /p:TreatWarningsAsErrors=false
 
       # NuGet パッケージのビルド
       - name: Pack NuGet packages

@@ -293,7 +293,7 @@ public partial class ViewerWindow : Window
         // TODO: MsgReaderを使った専用のEmailViewer UserControlを実装
         MessageBox.Show("メール表示機能は未実装です。\nWindows標準プログラムで開きます。", "情報",
             MessageBoxButton.OK, MessageBoxImage.Information);
-        OpenWithDefaultProgram(filePath);
+        _ = OpenWithDefaultProgram(filePath);
         return null;
     }
 
