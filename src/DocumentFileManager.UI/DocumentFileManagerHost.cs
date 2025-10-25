@@ -45,8 +45,12 @@ public class DocumentFileManagerHost : IDisposable
     /// <param name="pathSettings">パス設定（nullの場合はデフォルト）</param>
     public static void ShowMainWindow(string documentRootPath, PathSettings? pathSettings)
     {
-        // pathSettings が null の場合、新しい PathSettings を作成
-        pathSettings ??= new PathSettings();
+        // appsettings.jsonから設定を読み込む
+        var appsettingsPath = Path.Combine(documentRootPath, "appsettings.json");
+        var loadedSettings = Services.SettingsPersistence.LoadPathSettingsFromFile(appsettingsPath);
+
+        // 読み込んだ設定を使用、なければ引数の設定、それもなければデフォルト
+        pathSettings = loadedSettings ?? pathSettings ?? new PathSettings();
 
         // ChecklistDefinitionsFolder が未設定の場合、フォルダ選択ダイアログを表示
         if (string.IsNullOrEmpty(pathSettings.ChecklistDefinitionsFolder))
@@ -68,6 +72,29 @@ public class DocumentFileManagerHost : IDisposable
                 // キャンセルされた場合はドキュメントルートをデフォルトとして使用
                 pathSettings.ChecklistDefinitionsFolder = documentRootPath;
                 Log.Information("フォルダ選択がキャンセルされたため、documentRootPath を使用します: {Path}", documentRootPath);
+            }
+        }
+
+        // SelectedChecklistFile が未設定または存在しない場合、チェックリスト選択ダイアログを表示
+        var checklistPath = Path.Combine(documentRootPath, pathSettings.SelectedChecklistFile);
+        if (string.IsNullOrEmpty(pathSettings.SelectedChecklistFile) || !File.Exists(checklistPath))
+        {
+            Log.Information("チェックリストファイルが未設定または存在しないため、選択ダイアログを表示します");
+
+            var selectionDialog = new Dialogs.ChecklistSelectionDialog(documentRootPath, pathSettings);
+            var dialogResult = selectionDialog.ShowDialog();
+
+            if (dialogResult == true && !string.IsNullOrEmpty(selectionDialog.SelectedChecklistFileName))
+            {
+                pathSettings.SelectedChecklistFile = selectionDialog.SelectedChecklistFileName;
+                Log.Information("チェックリストファイルが選択されました: {File}", pathSettings.SelectedChecklistFile);
+
+                // PathSettings を appsettings.json に保存（永続化）
+                SavePathSettingsToAppSettings(documentRootPath, pathSettings);
+            }
+            else
+            {
+                Log.Warning("チェックリストファイルが選択されませんでした。デフォルトを使用します。");
             }
         }
 

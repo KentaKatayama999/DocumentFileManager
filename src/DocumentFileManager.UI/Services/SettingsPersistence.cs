@@ -18,6 +18,35 @@ public class SettingsPersistence
     }
 
     /// <summary>
+    /// appsettings.jsonからPathSettingsを読み込む
+    /// </summary>
+    public static PathSettings? LoadPathSettingsFromFile(string appsettingsPath)
+    {
+        try
+        {
+            if (!File.Exists(appsettingsPath))
+            {
+                return null;
+            }
+
+            var json = File.ReadAllText(appsettingsPath);
+            using var document = JsonDocument.Parse(json);
+            var root = document.RootElement;
+
+            if (!root.TryGetProperty("PathSettings", out var pathSettingsElement))
+            {
+                return null;
+            }
+
+            return JsonSerializer.Deserialize<PathSettings>(pathSettingsElement.GetRawText());
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
     /// PathSettingsをappsettings.jsonに保存する
     /// </summary>
     public async Task SavePathSettingsAsync(PathSettings pathSettings, string appsettingsPath)
@@ -56,6 +85,7 @@ public class SettingsPersistence
                 { "DatabaseName", pathSettings.DatabaseName },
                 { "ChecklistFile", pathSettings.ChecklistFile },
                 { "SelectedChecklistFile", pathSettings.SelectedChecklistFile },
+                { "ChecklistDefinitionsFolder", pathSettings.ChecklistDefinitionsFolder },
                 { "SettingsFile", pathSettings.SettingsFile },
                 { "CapturesDirectory", pathSettings.CapturesDirectory }
             };
