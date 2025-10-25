@@ -28,13 +28,23 @@ public class ChecklistLoader
     {
         _logger.LogInformation("チェック項目定義を読み込みます: {FilePath} (タイムアウト: {Timeout}秒)", jsonFilePath, timeoutSeconds);
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+        var timeout = TimeSpan.FromSeconds(timeoutSeconds);
 
         try
         {
             // File.Existsもタイムアウト対象にする（ネットワークパスの場合に重要）
-            var existsTask = Task.Run(() => File.Exists(jsonFilePath), cts.Token);
-            var fileExists = await existsTask;
+            var existsTask = Task.Run(() => File.Exists(jsonFilePath));
+            bool fileExists;
+
+            try
+            {
+                fileExists = await existsTask.WaitAsync(timeout);
+            }
+            catch (TimeoutException)
+            {
+                _logger.LogError("チェックリストファイルの存在確認がタイムアウトしました: {FilePath} ({Timeout}秒)", jsonFilePath, timeoutSeconds);
+                throw new TimeoutException($"チェックリストファイルの存在確認がタイムアウトしました ({timeoutSeconds}秒): {jsonFilePath}");
+            }
 
             if (!fileExists)
             {
@@ -42,7 +52,20 @@ public class ChecklistLoader
                 throw new FileNotFoundException($"checklist.json が見つかりません: {jsonFilePath}");
             }
 
-            var json = await File.ReadAllTextAsync(jsonFilePath, cts.Token);
+            // ファイル読み込みもタイムアウト対象にする
+            var readTask = File.ReadAllTextAsync(jsonFilePath);
+            string json;
+
+            try
+            {
+                json = await readTask.WaitAsync(timeout);
+            }
+            catch (TimeoutException)
+            {
+                _logger.LogError("チェックリストファイルの読み込みがタイムアウトしました: {FilePath} ({Timeout}秒)", jsonFilePath, timeoutSeconds);
+                throw new TimeoutException($"チェックリストファイルの読み込みがタイムアウトしました ({timeoutSeconds}秒): {jsonFilePath}");
+            }
+
             var root = JsonSerializer.Deserialize<ChecklistRoot>(json, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
@@ -58,10 +81,10 @@ public class ChecklistLoader
             _logger.LogInformation("{Count} 件の大分類を読み込みました", root.CheckItems.Count);
             return root.CheckItems;
         }
-        catch (OperationCanceledException)
+        catch (TimeoutException)
         {
-            _logger.LogError("チェックリストファイルの読み込みがタイムアウトしました: {FilePath} ({Timeout}秒)", jsonFilePath, timeoutSeconds);
-            throw new TimeoutException($"チェックリストファイルの読み込みがタイムアウトしました ({timeoutSeconds}秒): {jsonFilePath}");
+            // 既にログ出力済みなので、そのまま再スロー
+            throw;
         }
     }
 
