@@ -30,16 +30,21 @@ jobs:
       # NuGet パッケージのビルド
       - name: Pack NuGet packages
         run: |
+          mkdir -p packages
           dotnet pack src/DocumentFileManager/DocumentFileManager.csproj --configuration Release --no-build --output ./packages
           dotnet pack src/DocumentFileManager.Infrastructure/DocumentFileManager.Infrastructure.csproj --configuration Release --no-build --output ./packages
           dotnet pack src/DocumentFileManager.Viewer/DocumentFileManager.Viewer.csproj --configuration Release --no-build --output ./packages
           dotnet pack src/DocumentFileManager.UI/DocumentFileManager.UI.csproj --configuration Release --no-build --output ./packages
           dotnet pack src/DocumentFileManager.Complete/DocumentFileManager.Complete.csproj --configuration Release --no-build --output ./packages
+        shell: bash
 
       # GitHub Packagesに公開
       - name: Publish to GitHub Packages
         run: |
-          dotnet nuget push ./packages/*.nupkg --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --api-key ${{ secrets.GITHUB_TOKEN }} --skip-duplicate
+          Get-ChildItem -Path ./packages -Filter *.nupkg | ForEach-Object {
+            dotnet nuget push $_.FullName --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --api-key ${{ secrets.GITHUB_TOKEN }} --skip-duplicate
+          }
+        shell: pwsh
 
       - name: Publish UI Application
         run: dotnet publish src/DocumentFileManager.UI/DocumentFileManager.UI.csproj -c Release -o ./publish/UI
