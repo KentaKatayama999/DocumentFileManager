@@ -10,7 +10,7 @@
 
     <!-- NuGet パッケージ設定 -->
     <PackageId>DocumentFileManager.Complete</PackageId>
-    <Version>1.1.1</Version>
+    <Version>1.1.2</Version>
     <Authors>DocumentFileManager Contributors</Authors>
     <Company>DocumentFileManager</Company>
     <Description>Complete meta-package for DocumentFileManager. Installs all components including Domain, Infrastructure, UI, and Viewer. This is a convenience package that references all other DocumentFileManager packages.</Description>

@@ -45,6 +45,32 @@ public class DocumentFileManagerHost : IDisposable
     /// <param name="pathSettings">パス設定（nullの場合はデフォルト）</param>
     public static void ShowMainWindow(string documentRootPath, PathSettings? pathSettings)
     {
+        // pathSettings が null の場合、新しい PathSettings を作成
+        pathSettings ??= new PathSettings();
+
+        // ChecklistDefinitionsFolder が未設定の場合、フォルダ選択ダイアログを表示
+        if (string.IsNullOrEmpty(pathSettings.ChecklistDefinitionsFolder))
+        {
+            Log.Information("チェックリスト定義フォルダが未設定のため、フォルダ選択ダイアログを表示します");
+
+            var selectedFolder = SelectChecklistDefinitionsFolder(documentRootPath);
+
+            if (!string.IsNullOrEmpty(selectedFolder))
+            {
+                pathSettings.ChecklistDefinitionsFolder = selectedFolder;
+                Log.Information("チェックリスト定義フォルダが選択されました: {Folder}", selectedFolder);
+
+                // PathSettings を appsettings.json に保存（永続化）
+                SavePathSettingsToAppSettings(documentRootPath, pathSettings);
+            }
+            else
+            {
+                // キャンセルされた場合はドキュメントルートをデフォルトとして使用
+                pathSettings.ChecklistDefinitionsFolder = documentRootPath;
+                Log.Information("フォルダ選択がキャンセルされたため、documentRootPath を使用します: {Path}", documentRootPath);
+            }
+        }
+
         var host = new DocumentFileManagerHost();
         host.Initialize(documentRootPath, pathSettings);
         host.InitializeDatabaseAsync().Wait();
@@ -200,6 +226,104 @@ public class DocumentFileManagerHost : IDisposable
         }
 
         return _host.Services.GetRequiredService<IntegrityReportWindow>();
+    }
+
+    #endregion
+
+    #region ヘルパーメソッド
+
+    /// <summary>
+    /// チェックリスト定義フォルダを選択
+    /// </summary>
+    /// <param name="documentRootPath">デフォルトのドキュメントルートパス</param>
+    /// <returns>選択されたフォルダパス（キャンセル時は null）</returns>
+    private static string? SelectChecklistDefinitionsFolder(string documentRootPath)
+    {
+        // OpenFileDialogをフォルダ選択モードで使用
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "チェックリスト定義ファイルの保存先フォルダを選択",
+            FileName = "フォルダ選択",
+            Filter = "フォルダ|*.none",
+            CheckFileExists = false,
+            CheckPathExists = true,
+            InitialDirectory = documentRootPath
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            // 選択されたファイルのディレクトリを取得
+            var selectedFolder = Path.GetDirectoryName(dialog.FileName);
+
+            if (!string.IsNullOrEmpty(selectedFolder) && Directory.Exists(selectedFolder))
+            {
+                return selectedFolder;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// PathSettings を appsettings.json に保存
+    /// </summary>
+    /// <param name="documentRootPath">ドキュメントルートパス</param>
+    /// <param name="pathSettings">保存する PathSettings</param>
+    private static void SavePathSettingsToAppSettings(string documentRootPath, PathSettings pathSettings)
+    {
+        try
+        {
+            // 設定ファイルパスを取得
+            var settingsPath = Path.Combine(documentRootPath, pathSettings.SettingsFile);
+
+            // 既存のJSONを読み込み
+            string jsonContent = File.ReadAllText(settingsPath);
+            using var document = System.Text.Json.JsonDocument.Parse(jsonContent);
+            var root = document.RootElement;
+
+            // 新しいJSONを構築
+            var options = new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            };
+
+            using var stream = new MemoryStream();
+            using (var writer = new System.Text.Json.Utf8JsonWriter(stream, new System.Text.Json.JsonWriterOptions { Indented = true }))
+            {
+                writer.WriteStartObject();
+
+                // Logging セクションをコピー
+                if (root.TryGetProperty("Logging", out var loggingElement))
+                {
+                    writer.WritePropertyName("Logging");
+                    loggingElement.WriteTo(writer);
+                }
+
+                // PathSettings セクションを書き込み（更新された値を使用）
+                writer.WritePropertyName("PathSettings");
+                System.Text.Json.JsonSerializer.Serialize(writer, pathSettings, options);
+
+                // UISettings セクションをコピー
+                if (root.TryGetProperty("UISettings", out var uiSettingsElement))
+                {
+                    writer.WritePropertyName("UISettings");
+                    uiSettingsElement.WriteTo(writer);
+                }
+
+                writer.WriteEndObject();
+            }
+
+            // ファイルに書き込み
+            var json = System.Text.Encoding.UTF8.GetString(stream.ToArray());
+            File.WriteAllText(settingsPath, json);
+
+            Log.Information("PathSettings を appsettings.json に保存しました: {Path}", settingsPath);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "PathSettings の保存に失敗しました");
+        }
     }
 
     #endregion
