@@ -276,11 +276,6 @@ public class DocumentFileManagerHost : IDisposable
             // 設定ファイルパスを取得
             var settingsPath = Path.Combine(documentRootPath, pathSettings.SettingsFile);
 
-            // 既存のJSONを読み込み
-            string jsonContent = File.ReadAllText(settingsPath);
-            using var document = System.Text.Json.JsonDocument.Parse(jsonContent);
-            var root = document.RootElement;
-
             // 新しいJSONを構築
             var options = new System.Text.Json.JsonSerializerOptions
             {
@@ -293,22 +288,38 @@ public class DocumentFileManagerHost : IDisposable
             {
                 writer.WriteStartObject();
 
-                // Logging セクションをコピー
-                if (root.TryGetProperty("Logging", out var loggingElement))
+                // ファイルが存在する場合は既存のセクションをコピー
+                if (File.Exists(settingsPath))
                 {
-                    writer.WritePropertyName("Logging");
-                    loggingElement.WriteTo(writer);
+                    string jsonContent = File.ReadAllText(settingsPath);
+                    using var document = System.Text.Json.JsonDocument.Parse(jsonContent);
+                    var root = document.RootElement;
+
+                    // Logging セクションをコピー
+                    if (root.TryGetProperty("Logging", out var loggingElement))
+                    {
+                        writer.WritePropertyName("Logging");
+                        loggingElement.WriteTo(writer);
+                    }
+
+                    // PathSettings セクションを書き込み（更新された値を使用）
+                    writer.WritePropertyName("PathSettings");
+                    System.Text.Json.JsonSerializer.Serialize(writer, pathSettings, options);
+
+                    // UISettings セクションをコピー
+                    if (root.TryGetProperty("UISettings", out var uiSettingsElement))
+                    {
+                        writer.WritePropertyName("UISettings");
+                        uiSettingsElement.WriteTo(writer);
+                    }
                 }
-
-                // PathSettings セクションを書き込み（更新された値を使用）
-                writer.WritePropertyName("PathSettings");
-                System.Text.Json.JsonSerializer.Serialize(writer, pathSettings, options);
-
-                // UISettings セクションをコピー
-                if (root.TryGetProperty("UISettings", out var uiSettingsElement))
+                else
                 {
-                    writer.WritePropertyName("UISettings");
-                    uiSettingsElement.WriteTo(writer);
+                    // ファイルが存在しない場合は新規作成（PathSettingsのみ）
+                    writer.WritePropertyName("PathSettings");
+                    System.Text.Json.JsonSerializer.Serialize(writer, pathSettings, options);
+
+                    Log.Information("appsettings.json が存在しないため、新規作成します: {Path}", settingsPath);
                 }
 
                 writer.WriteEndObject();

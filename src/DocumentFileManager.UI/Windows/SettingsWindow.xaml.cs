@@ -59,13 +59,8 @@ public partial class SettingsWindow : Window
                 return;
             }
 
-            // 設定ファイルパスを取得
-            var settingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _pathSettings.SettingsFile);
-
-            // 既存のJSONを読み込み
-            string jsonContent = File.ReadAllText(settingsPath);
-            using var document = JsonDocument.Parse(jsonContent);
-            var root = document.RootElement;
+            // 設定ファイルパスを取得（_documentRootPath を使用）
+            var settingsPath = Path.Combine(_documentRootPath, _pathSettings.SettingsFile);
 
             // 新しいJSONを構築
             var options = new JsonSerializerOptions
@@ -79,11 +74,19 @@ public partial class SettingsWindow : Window
             {
                 writer.WriteStartObject();
 
-                // Logging セクションをコピー
-                if (root.TryGetProperty("Logging", out var loggingElement))
+                // ファイルが存在する場合は既存のLoggingセクションをコピー
+                if (File.Exists(settingsPath))
                 {
-                    writer.WritePropertyName("Logging");
-                    loggingElement.WriteTo(writer);
+                    string jsonContent = File.ReadAllText(settingsPath);
+                    using var document = JsonDocument.Parse(jsonContent);
+                    var root = document.RootElement;
+
+                    // Logging セクションをコピー
+                    if (root.TryGetProperty("Logging", out var loggingElement))
+                    {
+                        writer.WritePropertyName("Logging");
+                        loggingElement.WriteTo(writer);
+                    }
                 }
 
                 // PathSettings セクションを書き込み（更新された値を使用）
