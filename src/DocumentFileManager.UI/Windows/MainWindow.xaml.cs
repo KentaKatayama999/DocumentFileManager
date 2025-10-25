@@ -108,10 +108,9 @@ public partial class MainWindow : Window
                     _pathSettings.SelectedChecklistFile = selectionDialog.SelectedChecklistFileName;
                     _logger.LogInformation("選択されたチェックリスト: {FileName}", _pathSettings.SelectedChecklistFile);
 
-                    // 設定を保存
+                    // 設定を保存（projectRootに保存）
                     var settingsPersistence = _serviceProvider.GetRequiredService<Services.SettingsPersistence>();
-                    var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-                    var appsettingsPath = Path.Combine(baseDirectory, "appsettings.json");
+                    var appsettingsPath = Path.Combine(projectRoot, "appsettings.json");
                     await settingsPersistence.SavePathSettingsAsync(_pathSettings, appsettingsPath);
                     _logger.LogInformation("設定を保存しました");
                 }
