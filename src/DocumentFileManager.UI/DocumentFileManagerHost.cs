@@ -1,11 +1,13 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.IO;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Threading;
 using DocumentFileManager.UI.Configuration;
 using DocumentFileManager.UI.Dialogs;
 using DocumentFileManager.UI.Services;
@@ -43,8 +45,8 @@ public class DocumentFileManagerHost : IDisposable
             {
                 Log.Warning("Checklist file was not selected. Application start cancelled.");
                 MessageBox.Show(
-                    "チェックリストファイルが選択されなかったため、アプリケーションを終了します。",
-                    "情報",
+                    "チェックリストファイルが選択されなかったため、DocumentFileManager を終了します。",
+                    "警告",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
                 return;
@@ -53,14 +55,19 @@ public class DocumentFileManagerHost : IDisposable
 
         SavePathSettingsToAppSettings(documentRootPath, resolvedSettings);
 
-        var host = new DocumentFileManagerHost();
-        host.Initialize(documentRootPath, resolvedSettings);
-        host.InitializeDatabaseAsync().GetAwaiter().GetResult();
-
-        var mainWindow = host.CreateMainWindow();
-        mainWindow.ShowDialog();
-
-        host.Dispose();
+        RunHostModal(
+            documentRootPath,
+            resolvedSettings,
+            host => host.CreateMainWindow(),
+            window =>
+            {
+                var owner = GetActiveWindow();
+                if (owner != null && owner != window)
+                {
+                    window.Owner = owner;
+                }
+                window.ShowDialog();
+            });
     }
 
     public static void ShowChecklistEditor(string documentRootPath) =>
@@ -79,7 +86,7 @@ public class DocumentFileManagerHost : IDisposable
                 Log.Warning("Checklist file was not selected. Checklist editor will not open.");
                 MessageBox.Show(
                     "チェックリストファイルが選択されなかったため、エディタを開けません。",
-                    "情報",
+                    "警告",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
                 return;
@@ -88,16 +95,89 @@ public class DocumentFileManagerHost : IDisposable
 
         SavePathSettingsToAppSettings(documentRootPath, resolvedSettings);
 
-        var host = new DocumentFileManagerHost();
-        host.Initialize(documentRootPath, resolvedSettings);
-
-        var editorWindow = host.CreateChecklistEditorWindow();
-        editorWindow.ShowDialog();
-
-        host.Dispose();
+        RunHostModal(
+            documentRootPath,
+            resolvedSettings,
+            host => host.CreateChecklistEditorWindow(),
+            window =>
+            {
+                var owner = GetActiveWindow();
+                if (owner != null && owner != window)
+                {
+                    window.Owner = owner;
+                }
+                window.ShowDialog();
+            });
     }
 
     #endregion
+
+    private static void RunHostModal(
+        string documentRootPath,
+        PathSettings resolvedSettings,
+        Func<DocumentFileManagerHost, Window> windowFactory,
+        Action<Window> showWindowAction)
+    {
+        var dispatcher = Application.Current?.Dispatcher ?? Dispatcher.CurrentDispatcher;
+        var frame = new DispatcherFrame();
+
+#pragma warning disable CS4014
+        Task.Run(async () =>
+        {
+            DocumentFileManagerHost? host = null;
+            try
+            {
+                host = new DocumentFileManagerHost();
+                host.Initialize(documentRootPath, resolvedSettings);
+                await host.InitializeDatabaseAsync().ConfigureAwait(false);
+
+                await dispatcher.InvokeAsync(() =>
+                {
+                    var window = windowFactory(host);
+                    var owner = GetActiveWindow();
+                    if (owner != null && owner != window)
+                    {
+                        window.Owner = owner;
+                    }
+
+                    showWindowAction(window);
+                }).Task.ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "DocumentFileManager のウィンドウ起動中にエラーが発生しました。");
+                await dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show(
+                        $"DocumentFileManager の起動中にエラーが発生しました:\n{ex.Message}",
+                        "エラー",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                }).Task.ConfigureAwait(false);
+            }
+            finally
+            {
+                host?.Dispose();
+                dispatcher.BeginInvoke(new Action(() => frame.Continue = false));
+            }
+        });
+#pragma warning restore CS4014
+
+        Dispatcher.PushFrame(frame);
+    }
+
+    private static Window? GetActiveWindow()
+    {
+        if (Application.Current == null)
+        {
+            return null;
+        }
+
+        return Application.Current.Windows
+                   .OfType<Window>()
+                   .FirstOrDefault(w => w.IsActive)
+               ?? Application.Current.MainWindow;
+    }
 
     #region Host Lifetime
 
@@ -461,3 +541,4 @@ public class DocumentFileManagerHost : IDisposable
 
     #endregion
 }
+
