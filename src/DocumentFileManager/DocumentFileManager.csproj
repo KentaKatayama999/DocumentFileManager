@@ -1,13 +1,13 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>true</IsPackable>
 
-    <!-- NuGet パッケージ設定 -->
+    <!-- NuGet 繝代ャ繧ｱ繝ｼ繧ｸ險ｭ螳・-->
     <PackageId>DocumentFileManager</PackageId>
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
     <Authors>DocumentFileManager Contributors</Authors>
     <Company>DocumentFileManager</Company>
     <Description>Domain layer library for DocumentFileManager. Provides core entities, value objects, and domain rules for document and checklist management.</Description>
@@ -19,3 +19,4 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 </Project>
+

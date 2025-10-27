@@ -35,13 +35,13 @@ public class DataSeeder
         _logger.LogInformation("シードデータの投入を開始します");
 
         // チェック項目は常にJSONと同期
-        await SyncCheckItemsAsync();
+        await SyncCheckItemsAsync().ConfigureAwait(false);
 
         // 資料とその紐づけは初回のみ投入
-        if (!await _context.Documents.AnyAsync())
+        if (!await _context.Documents.AnyAsync().ConfigureAwait(false))
         {
-            await SeedDocumentsAsync();
-            await SeedCheckItemDocumentsAsync();
+            await SeedDocumentsAsync().ConfigureAwait(false);
+            await SeedCheckItemDocumentsAsync().ConfigureAwait(false);
         }
         else
         {
@@ -90,11 +90,11 @@ public class DataSeeder
                 AddedAt = DateTime.UtcNow.AddDays(-new Random().Next(1, 30))
             };
 
-            await _context.Documents.AddAsync(document);
+            await _context.Documents.AddAsync(document).ConfigureAwait(false);
             _logger.LogDebug("資料を追加: {FileName}", fileName);
         }
 
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync().ConfigureAwait(false);
         _logger.LogInformation("資料データの投入が完了しました");
     }
 
@@ -115,7 +115,8 @@ public class DataSeeder
             // ChecklistLoaderでJSONを読み込み（1秒おきに10回試行）
             var checklistLogger = _loggerFactory.CreateLogger<ChecklistLoader>();
             var loader = new ChecklistLoader(checklistLogger);
-            var definitions = await loader.LoadAsync(checklistPath, maxRetries: 10, retryIntervalMs: 1000);
+            var definitions = await loader.LoadAsync(checklistPath, maxRetries: 10, retryIntervalMs: 1000)
+                .ConfigureAwait(false);
 
             var stats = loader.GetStatistics(definitions);
             _logger.LogInformation("JSON統計: 分類={Categories}件, 項目={Items}件, チェック済={Checked}件",
@@ -125,17 +126,17 @@ public class DataSeeder
             var jsonPaths = new HashSet<string>();
 
             // 階層構造を再帰的に同期
-            await SyncCheckItemsRecursiveAsync(definitions, null, null, jsonPaths);
+            await SyncCheckItemsRecursiveAsync(definitions, null, null, jsonPaths).ConfigureAwait(false);
 
             // JSONにないDB項目を削除
-            var allDbItems = await _context.CheckItems.ToListAsync();
+            var allDbItems = await _context.CheckItems.ToListAsync().ConfigureAwait(false);
             var itemsToDelete = allDbItems.Where(item => !jsonPaths.Contains(item.Path)).ToList();
 
             if (itemsToDelete.Any())
             {
                 _logger.LogInformation("JSONに存在しない {Count} 件のチェック項目を削除します", itemsToDelete.Count);
                 _context.CheckItems.RemoveRange(itemsToDelete);
-                await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync().ConfigureAwait(false);
             }
 
             _logger.LogInformation("チェック項目データの同期が完了しました");
@@ -179,7 +180,8 @@ public class DataSeeder
 
             // 既存項目を検索
             var existingItem = await _context.CheckItems
-                .FirstOrDefaultAsync(c => c.Path == currentPath);
+                .FirstOrDefaultAsync(c => c.Path == currentPath)
+                .ConfigureAwait(false);
 
             CheckItem checkItem;
 
@@ -204,18 +206,19 @@ public class DataSeeder
                     ParentId = parentId
                 };
 
-                await _context.CheckItems.AddAsync(checkItem);
+                await _context.CheckItems.AddAsync(checkItem).ConfigureAwait(false);
 
                 _logger.LogDebug("チェック項目を追加: {Path} (Status={Status})",
                     checkItem.Path, checkItem.Status);
             }
 
-            await _context.SaveChangesAsync(); // すぐに保存してIDを取得
+            await _context.SaveChangesAsync().ConfigureAwait(false); // すぐに保存してIDを取得
 
             // 子要素を再帰的に処理
             if (def.Children != null && def.Children.Count > 0)
             {
-                await SyncCheckItemsRecursiveAsync(def.Children, currentPath, checkItem.Id, jsonPaths);
+                await SyncCheckItemsRecursiveAsync(def.Children, currentPath, checkItem.Id, jsonPaths)
+                    .ConfigureAwait(false);
             }
         }
     }
@@ -228,8 +231,8 @@ public class DataSeeder
         _logger.LogInformation("紐づけデータを投入します");
 
         // 設計書 と 設計図面/建築図面/平面図/1階平面図 を紐づけ
-        var designDoc = await _context.Documents.FirstOrDefaultAsync(d => d.FileName == "設計書_rev1.pdf");
-        var floorPlan = await _context.CheckItems.FirstOrDefaultAsync(c => c.Path == "設計図面/建築図面/平面図/1階平面図");
+        var designDoc = await _context.Documents.FirstOrDefaultAsync(d => d.FileName == "設計書_rev1.pdf").ConfigureAwait(false);
+        var floorPlan = await _context.CheckItems.FirstOrDefaultAsync(c => c.Path == "設計図面/建築図面/平面図/1階平面図").ConfigureAwait(false);
 
         if (designDoc != null && floorPlan != null)
         {
@@ -240,13 +243,13 @@ public class DataSeeder
                 LinkedAt = DateTime.UtcNow.AddDays(-5),
                 CaptureFile = "dummy/picture/capture_001.png"
             };
-            await _context.CheckItemDocuments.AddAsync(link1);
+            await _context.CheckItemDocuments.AddAsync(link1).ConfigureAwait(false);
             _logger.LogDebug("紐づけを追加: {DocName} ⇔ {CheckItemPath}", designDoc.FileName, floorPlan.Path);
         }
 
         // 仕様書 と 仕様書/設備仕様/電気設備仕様/照明器具 を紐づけ
-        var specDoc = await _context.Documents.FirstOrDefaultAsync(d => d.FileName == "仕様書_最新版.pdf");
-        var lighting = await _context.CheckItems.FirstOrDefaultAsync(c => c.Path == "仕様書/設備仕様/電気設備仕様/照明器具");
+        var specDoc = await _context.Documents.FirstOrDefaultAsync(d => d.FileName == "仕様書_最新版.pdf").ConfigureAwait(false);
+        var lighting = await _context.CheckItems.FirstOrDefaultAsync(c => c.Path == "仕様書/設備仕様/電気設備仕様/照明器具").ConfigureAwait(false);
 
         if (specDoc != null && lighting != null)
         {
@@ -257,13 +260,13 @@ public class DataSeeder
                 LinkedAt = DateTime.UtcNow.AddDays(-3),
                 CaptureFile = "dummy/picture/capture_002.png"
             };
-            await _context.CheckItemDocuments.AddAsync(link2);
+            await _context.CheckItemDocuments.AddAsync(link2).ConfigureAwait(false);
             _logger.LogDebug("紐づけを追加: {DocName} ⇔ {CheckItemPath}", specDoc.FileName, lighting.Path);
         }
 
         // テスト計画書 と テスト/単体テスト/ドメイン層/CheckItemテスト を紐づけ
-        var testDoc = await _context.Documents.FirstOrDefaultAsync(d => d.FileName == "テスト計画書.docx");
-        var checkItemTest = await _context.CheckItems.FirstOrDefaultAsync(c => c.Path == "テスト/単体テスト/ドメイン層/CheckItemテスト");
+        var testDoc = await _context.Documents.FirstOrDefaultAsync(d => d.FileName == "テスト計画書.docx").ConfigureAwait(false);
+        var checkItemTest = await _context.CheckItems.FirstOrDefaultAsync(c => c.Path == "テスト/単体テスト/ドメイン層/CheckItemテスト").ConfigureAwait(false);
 
         if (testDoc != null && checkItemTest != null)
         {
@@ -274,11 +277,11 @@ public class DataSeeder
                 LinkedAt = DateTime.UtcNow.AddDays(-1)
                 // CaptureFileなし
             };
-            await _context.CheckItemDocuments.AddAsync(link3);
+            await _context.CheckItemDocuments.AddAsync(link3).ConfigureAwait(false);
             _logger.LogDebug("紐づけを追加: {DocName} ⇔ {CheckItemPath}", testDoc.FileName, checkItemTest.Path);
         }
 
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync().ConfigureAwait(false);
         _logger.LogInformation("紐づけデータの投入が完了しました");
     }
 }

@@ -39,7 +39,7 @@ public class ChecklistLoader
             try
             {
                 var existsTask = Task.Run(() => File.Exists(jsonFilePath));
-                fileExists = await existsTask.WaitAsync(TimeSpan.FromMilliseconds(retryIntervalMs));
+                fileExists = await existsTask.WaitAsync(TimeSpan.FromMilliseconds(retryIntervalMs)).ConfigureAwait(false);
 
                 if (fileExists)
                 {
@@ -60,7 +60,7 @@ public class ChecklistLoader
             // 最後の試行でない場合は待機
             if (i < maxRetries)
             {
-                await Task.Delay(retryIntervalMs);
+                await Task.Delay(retryIntervalMs).ConfigureAwait(false);
             }
         }
 
@@ -79,7 +79,7 @@ public class ChecklistLoader
             try
             {
                 var readTask = File.ReadAllTextAsync(jsonFilePath);
-                json = await readTask.WaitAsync(TimeSpan.FromMilliseconds(retryIntervalMs));
+                json = await readTask.WaitAsync(TimeSpan.FromMilliseconds(retryIntervalMs)).ConfigureAwait(false);
 
                 if (!string.IsNullOrEmpty(json))
                 {
@@ -96,7 +96,7 @@ public class ChecklistLoader
             // 最後の試行でない場合は待機
             if (i < maxRetries)
             {
-                await Task.Delay(retryIntervalMs);
+                await Task.Delay(retryIntervalMs).ConfigureAwait(false);
             }
         }
 

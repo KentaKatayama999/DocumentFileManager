@@ -88,7 +88,7 @@ public static class AppInitializer
 
         Log.Information("Ensuring database is migrated.");
         var dbContext = scope.ServiceProvider.GetRequiredService<DocumentManagerContext>();
-        await dbContext.Database.MigrateAsync();
+        await dbContext.Database.MigrateAsync().ConfigureAwait(false);
         Log.Information("Database migration completed.");
 
         var loggerFactory = scope.ServiceProvider.GetRequiredService<ILoggerFactory>();
@@ -140,7 +140,7 @@ public static class AppInitializer
         Log.Information("Checklist path for seeding: {ChecklistPath}", checklistFullPath);
 
         var seeder = new DataSeeder(dbContext, loggerFactory, documentRoot, checklistFullPath);
-        await seeder.SeedAsync();
+        await seeder.SeedAsync().ConfigureAwait(false);
     }
 
     public static void SetupGlobalExceptionHandlers(Application app)
