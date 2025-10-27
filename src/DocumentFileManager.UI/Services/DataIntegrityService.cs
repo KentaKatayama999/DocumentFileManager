@@ -106,7 +106,7 @@ namespace DocumentFileManager.UI.Services
             _logger.LogDebug("孤立したキャプチャ画像を検索中...");
 
             var orphanedCaptures = new List<string>();
-            var capturesDirectory = Path.Combine(_projectRoot, _pathSettings.CapturesDirectory);
+            var capturesDirectory = _pathSettings.ToAbsolutePath(_projectRoot, _pathSettings.CapturesDirectory);
 
             // capturesディレクトリが存在しない場合は空リストを返す
             if (!Directory.Exists(capturesDirectory))

@@ -1,18 +1,15 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using DocumentFileManager.UI.Configuration;
 
 namespace DocumentFileManager.UI.Dialogs;
 
-/// <summary>
-/// チェックリスト選択ダイアログ
-/// </summary>
 public partial class ChecklistSelectionDialog : Window
 {
-    /// <summary>
-    /// チェックリストファイル情報
-    /// </summary>
     public class ChecklistFileInfo
     {
         public string FilePath { get; set; } = string.Empty;
@@ -20,10 +17,8 @@ public partial class ChecklistSelectionDialog : Window
         public string DisplayName { get; set; } = string.Empty;
     }
 
-    /// <summary>
-    /// 選択されたチェックリストファイル名
-    /// </summary>
     public string? SelectedChecklistFileName { get; private set; }
+    public string? SelectedChecklistFilePath { get; private set; }
 
     private readonly string _projectRoot;
     private readonly PathSettings? _pathSettings;
@@ -37,33 +32,32 @@ public partial class ChecklistSelectionDialog : Window
         LoadChecklistFiles();
     }
 
-    /// <summary>
-    /// チェックリストファイルを読み込む
-    /// </summary>
     private void LoadChecklistFiles()
     {
         var checklistFiles = new List<ChecklistFileInfo>();
+        var seenPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        const string pattern = "checklist*.json";
 
-        // ChecklistDefinitionsFolder が設定されている場合はそちらを優先、未設定の場合は _projectRoot を使用
-        var searchFolder = !string.IsNullOrEmpty(_pathSettings?.ChecklistDefinitionsFolder)
-            ? _pathSettings.ChecklistDefinitionsFolder
-            : _projectRoot;
+        var folders = EnumerateCandidateFolders().ToList();
 
-        // チェックリストファイルを検索
-        var pattern = "checklist*.json";
-        if (Directory.Exists(searchFolder))
+        foreach (var folder in folders.Where(Directory.Exists))
         {
-            var files = Directory.GetFiles(searchFolder, pattern, SearchOption.TopDirectoryOnly);
-
-            foreach (var file in files)
+            foreach (var file in Directory.GetFiles(folder, pattern, SearchOption.TopDirectoryOnly))
             {
-                var fileName = Path.GetFileName(file);
-                var displayName = fileName.Replace("checklist", "").Replace(".json", "").Trim('_', '-');
+                if (!seenPaths.Add(file))
+                {
+                    continue;
+                }
 
-                // ファイル名が "checklist.json" の場合は "デフォルト" と表示
+                var fileName = Path.GetFileName(file);
+                var displayName = fileName
+                    .Replace("checklist", "", StringComparison.OrdinalIgnoreCase)
+                    .Replace(".json", "", StringComparison.OrdinalIgnoreCase)
+                    .Trim('_', '-', ' ');
+
                 if (string.IsNullOrWhiteSpace(displayName))
                 {
-                    displayName = "デフォルト";
+                    displayName = "標準";
                 }
 
                 checklistFiles.Add(new ChecklistFileInfo
@@ -75,62 +69,71 @@ public partial class ChecklistSelectionDialog : Window
             }
         }
 
-        // デフォルトのchecklist.jsonがない場合は警告
         if (!checklistFiles.Any())
         {
+            var fallbackFolder = folders.FirstOrDefault() ?? _projectRoot;
             MessageBox.Show(
-                $"チェックリストファイルが見つかりません。\n\n検索フォルダ: {searchFolder}\nパターン: {pattern}",
-                "警告",
+                $"チェックリストファイルが見つかりませんでした。\n\n検索フォルダ: {fallbackFolder}\n検索パターン: {pattern}",
+                "注意",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
 
-            // デフォルトのchecklist.jsonを使う
             checklistFiles.Add(new ChecklistFileInfo
             {
-                FilePath = Path.Combine(searchFolder, "checklist.json"),
+                FilePath = Path.Combine(fallbackFolder, "checklist.json"),
                 FileName = "checklist.json",
-                DisplayName = "デフォルト (checklist.json)"
+                DisplayName = "標準 (checklist.json)"
             });
         }
 
         ChecklistListBox.ItemsSource = checklistFiles;
 
-        // 最初の項目を選択
         if (ChecklistListBox.Items.Count > 0)
         {
             ChecklistListBox.SelectedIndex = 0;
         }
     }
 
-    /// <summary>
-    /// OKボタンクリック
-    /// </summary>
+    private IEnumerable<string> EnumerateCandidateFolders()
+    {
+        if (_pathSettings != null)
+        {
+            if (!string.IsNullOrWhiteSpace(_pathSettings.ConfigDirectory))
+            {
+                yield return _pathSettings.ToAbsolutePath(_projectRoot, _pathSettings.ConfigDirectory);
+            }
+
+            if (!string.IsNullOrWhiteSpace(_pathSettings.ChecklistDefinitionsFolder))
+            {
+                yield return _pathSettings.ToAbsolutePath(_projectRoot, _pathSettings.ChecklistDefinitionsFolder);
+                yield break;
+            }
+        }
+
+        yield return _projectRoot;
+    }
+
     private void OkButton_Click(object sender, RoutedEventArgs e)
     {
         if (ChecklistListBox.SelectedItem is ChecklistFileInfo selectedFile)
         {
             SelectedChecklistFileName = selectedFile.FileName;
+            SelectedChecklistFilePath = selectedFile.FilePath;
             DialogResult = true;
             Close();
         }
         else
         {
-            MessageBox.Show("チェックリストを選択してください。", "確認", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("チェックリストを選択してください。", "情報", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 
-    /// <summary>
-    /// キャンセルボタンクリック
-    /// </summary>
     private void CancelButton_Click(object sender, RoutedEventArgs e)
     {
         DialogResult = false;
         Close();
     }
 
-    /// <summary>
-    /// リストボックスダブルクリック（OKボタンと同じ動作）
-    /// </summary>
     private void ChecklistListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (ChecklistListBox.SelectedItem != null)

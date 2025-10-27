@@ -441,27 +441,27 @@ public partial class MainWindow : Window
             }
 
             var projectRoot = GetProjectRoot();
+            var documentsRoot = _pathSettings.ToAbsolutePath(projectRoot, _pathSettings.DocumentsDirectory);
+            Directory.CreateDirectory(documentsRoot);
 
-            // documentRootPath 配下に直接ファイルを配置
-            // ファイル名と拡張子を取得
+            // 保存時は必ず資料サブフォルダ配下に配置する
             var fileName = Path.GetFileName(filePath);
             var fileNameWithoutExt = Path.GetFileNameWithoutExtension(filePath);
             var extension = Path.GetExtension(filePath);
 
             // コピー先のパスを決定（重複があれば連番を追加）
             var destFileName = fileName;
-            var destPath = Path.Combine(projectRoot, destFileName);
+            var destPath = Path.Combine(documentsRoot, destFileName);
             var counter = 1;
 
             while (File.Exists(destPath))
             {
                 destFileName = $"{fileNameWithoutExt}_{counter}{extension}";
-                destPath = Path.Combine(projectRoot, destFileName);
+                destPath = Path.Combine(documentsRoot, destFileName);
                 counter++;
             }
 
-            // ファイル名のみを相対パスとして保存（プロジェクト内のファイルパスを確実にするため）
-            var relativePath = destFileName;
+            var relativePath = Path.Combine(_pathSettings.DocumentsDirectory, destFileName);
 
             // 重複チェック（ファイル名で）
             var existing = await _documentRepository.GetByRelativePathAsync(relativePath);
@@ -689,7 +689,7 @@ public partial class MainWindow : Window
             var checklistSaver = _serviceProvider.GetRequiredService<Infrastructure.Services.ChecklistSaver>();
             var pathSettings = _serviceProvider.GetRequiredService<PathSettings>();
             var checklistLogger = _serviceProvider.GetRequiredService<ILogger<ChecklistWindow>>();
-            _checklistWindow = new ChecklistWindow(document, checkItemUIBuilder, checkItemDocumentRepository, checkItemRepository, checklistSaver, pathSettings, checklistLogger, documentWindowHandle)
+            _checklistWindow = new ChecklistWindow(document, checkItemUIBuilder, checkItemDocumentRepository, checkItemRepository, checklistSaver, pathSettings, checklistLogger, _documentRootPath, documentWindowHandle)
             {
                 Owner = null // Ownerを設定しない（MainWindowとの親子関係を切る）
             };

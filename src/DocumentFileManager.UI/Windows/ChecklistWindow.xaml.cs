@@ -66,6 +66,7 @@ public partial class ChecklistWindow : Window
     private readonly ILogger<ChecklistWindow> _logger;
     private readonly Document _document;
     private readonly ScreenCaptureService _captureService;
+    private readonly string _documentRootPath;
     private bool _isDockingRight = true; // デフォルトは右端
     private bool _isAdjustingPosition = false; // 位置調整中フラグ
     private IntPtr _documentWindowHandle = IntPtr.Zero; // 開いた資料のウィンドウハンドル
@@ -77,8 +78,9 @@ public partial class ChecklistWindow : Window
         ICheckItemRepository checkItemRepository,
         Infrastructure.Services.ChecklistSaver checklistSaver,
         PathSettings pathSettings,
-        ILogger<ChecklistWindow> logger)
-        : this(document, checkItemUIBuilder, checkItemDocumentRepository, checkItemRepository, checklistSaver, pathSettings, logger, IntPtr.Zero)
+        ILogger<ChecklistWindow> logger,
+        string documentRootPath)
+        : this(document, checkItemUIBuilder, checkItemDocumentRepository, checkItemRepository, checklistSaver, pathSettings, logger, documentRootPath, IntPtr.Zero)
     {
     }
 
@@ -90,6 +92,7 @@ public partial class ChecklistWindow : Window
         Infrastructure.Services.ChecklistSaver checklistSaver,
         PathSettings pathSettings,
         ILogger<ChecklistWindow> logger,
+        string documentRootPath,
         IntPtr documentWindowHandle)
     {
         _document = document;
@@ -99,6 +102,7 @@ public partial class ChecklistWindow : Window
         _checklistSaver = checklistSaver;
         _pathSettings = pathSettings;
         _logger = logger;
+        _documentRootPath = documentRootPath;
         _documentWindowHandle = documentWindowHandle;
         _captureService = new ScreenCaptureService();
 
@@ -386,8 +390,12 @@ public partial class ChecklistWindow : Window
                     Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "",
                     "..", "..", "..", "..", "..");
                 projectRoot = Path.GetFullPath(projectRoot);
+                if (!Directory.Exists(projectRoot))
+                {
+                    projectRoot = _documentRootPath;
+                }
 
-                var jsonFilePath = Path.Combine(projectRoot, _pathSettings.SelectedChecklistFile);
+                var jsonFilePath = _pathSettings.ToAbsolutePath(projectRoot, _pathSettings.SelectedChecklistFile);
 
                 await _checklistSaver.SaveAsync(allCheckItems, jsonFilePath);
 
@@ -481,6 +489,10 @@ public partial class ChecklistWindow : Window
                     Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "",
                     "..", "..", "..", "..", "..");
                 projectRoot = Path.GetFullPath(projectRoot);
+                if (!Directory.Exists(projectRoot))
+                {
+                    projectRoot = _documentRootPath;
+                }
 
                 var filePath = Path.Combine(projectRoot, fileName);
 
@@ -665,13 +677,18 @@ public partial class ChecklistWindow : Window
                 Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "",
                 "..", "..", "..", "..", "..");
             projectRoot = Path.GetFullPath(projectRoot);
+            if (!Directory.Exists(projectRoot))
+            {
+                projectRoot = _documentRootPath;
+            }
 
             // キャプチャファイルパスを生成
             var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            var capturesDir = Path.Combine(projectRoot, _pathSettings.CapturesDirectory, $"document_{_document.Id}");
+            var capturesRoot = _pathSettings.ToAbsolutePath(projectRoot, _pathSettings.CapturesDirectory);
+            var capturesDir = Path.Combine(capturesRoot, $"document_{_document.Id}");
             var fileName = $"checkitem_{viewModel.Entity.Id}_{timestamp}.png";
             var relativePath = Path.Combine(_pathSettings.CapturesDirectory, $"document_{_document.Id}", fileName);
-            var absolutePath = Path.Combine(projectRoot, relativePath);
+            var absolutePath = Path.Combine(capturesDir, fileName);
 
             // ディレクトリが存在しない場合は作成
             if (!Directory.Exists(capturesDir))

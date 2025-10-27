@@ -83,6 +83,8 @@ public class SettingsPersistence
             {
                 { "LogsFolder", pathSettings.LogsFolder },
                 { "DatabaseName", pathSettings.DatabaseName },
+                { "ConfigDirectory", pathSettings.ConfigDirectory },
+                { "DocumentsDirectory", pathSettings.DocumentsDirectory },
                 { "ChecklistFile", pathSettings.ChecklistFile },
                 { "SelectedChecklistFile", pathSettings.SelectedChecklistFile },
                 { "ChecklistDefinitionsFolder", pathSettings.ChecklistDefinitionsFolder },

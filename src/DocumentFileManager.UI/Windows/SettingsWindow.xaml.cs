@@ -146,13 +146,34 @@ public partial class SettingsWindow : Window
             };
             var dialogResult = selectionDialog.ShowDialog();
 
-            if (dialogResult == true && !string.IsNullOrEmpty(selectionDialog.SelectedChecklistFileName))
+            if (dialogResult == true && !string.IsNullOrEmpty(selectionDialog.SelectedChecklistFilePath))
             {
-                // 選択されたチェックリストファイル名をPathSettingsに設定
-                _pathSettings.SelectedChecklistFile = selectionDialog.SelectedChecklistFileName;
-                _logger.LogInformation("チェックリストを変更しました: {FileName}", _pathSettings.SelectedChecklistFile);
+                var configFolder = _pathSettings.ToAbsolutePath(_documentRootPath, _pathSettings.ConfigDirectory);
+                Directory.CreateDirectory(configFolder);
 
-                // 画面表示を更新
+                var sourcePath = Path.GetFullPath(selectionDialog.SelectedChecklistFilePath);
+                var destinationPath = Path.Combine(configFolder, Path.GetFileName(sourcePath));
+
+                if (!string.Equals(sourcePath, destinationPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    File.Copy(sourcePath, destinationPath, overwrite: true);
+                    _logger.LogInformation("チェックリストをローカルにコピーしました: {Source} -> {Destination}", sourcePath, destinationPath);
+                }
+                else
+                {
+                    _logger.LogInformation("チェックリストは既にローカルフォルダ内に存在します: {Path}", sourcePath);
+                }
+
+                var relativePath = Path.GetRelativePath(_documentRootPath, destinationPath);
+                _pathSettings.SelectedChecklistFile = relativePath;
+                _pathSettings.ChecklistFile = relativePath;
+
+                var sourceFolder = Path.GetDirectoryName(sourcePath);
+                if (!string.IsNullOrEmpty(sourceFolder))
+                {
+                    _pathSettings.ChecklistDefinitionsFolder = sourceFolder;
+                }
+
                 CurrentChecklistText.Text = _pathSettings.SelectedChecklistFile;
 
                 MessageBox.Show(

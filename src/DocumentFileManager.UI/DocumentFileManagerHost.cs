@@ -1,134 +1,95 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
 using DocumentFileManager.UI.Configuration;
+using DocumentFileManager.UI.Dialogs;
+using DocumentFileManager.UI.Services;
 using DocumentFileManager.UI.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Win32;
 using Serilog;
 
 namespace DocumentFileManager.UI;
 
-/// <summary>
-/// DocumentFileManagerの公開APIクラス
-/// 他のアプリケーションからライブラリとして使用する際のエントリーポイント
-/// </summary>
 public class DocumentFileManagerHost : IDisposable
 {
     private IHost? _host;
     private bool _disposed;
 
-    /// <summary>
-    /// DIコンテナのサービスプロバイダー
-    /// </summary>
     public IServiceProvider? ServiceProvider => _host?.Services;
-
-    /// <summary>
-    /// ホストが初期化済みかどうか
-    /// </summary>
     public bool IsInitialized => _host != null;
 
-    #region 静的メソッド（シンプルな使用方法）
+    #region Entry Points
 
-    /// <summary>
-    /// MainWindowを表示（最もシンプルな使用方法）
-    /// </summary>
-    /// <param name="documentRootPath">プロジェクトのルートパス</param>
-    public static void ShowMainWindow(string documentRootPath)
-    {
+    public static void ShowMainWindow(string documentRootPath) =>
         ShowMainWindow(documentRootPath, null);
-    }
 
-    /// <summary>
-    /// MainWindowを表示（カスタム設定を指定）
-    /// </summary>
-    /// <param name="documentRootPath">プロジェクトのルートパス</param>
-    /// <param name="pathSettings">パス設定（nullの場合はデフォルト）</param>
     public static void ShowMainWindow(string documentRootPath, PathSettings? pathSettings)
     {
-        // appsettings.jsonから設定を読み込む
-        var appsettingsPath = Path.Combine(documentRootPath, "appsettings.json");
-        var loadedSettings = Services.SettingsPersistence.LoadPathSettingsFromFile(appsettingsPath);
+        var resolvedSettings = ResolvePathSettings(documentRootPath, pathSettings);
+        EnsureChecklistDefinitionsFolder(documentRootPath, resolvedSettings);
 
-        // 読み込んだ設定を使用、なければ引数の設定、それもなければデフォルト
-        pathSettings = loadedSettings ?? pathSettings ?? new PathSettings();
-
-        // ChecklistDefinitionsFolder が未設定の場合、フォルダ選択ダイアログを表示
-        if (string.IsNullOrEmpty(pathSettings.ChecklistDefinitionsFolder))
+        var checklistPath = EnsureChecklistAvailable(documentRootPath, resolvedSettings);
+        if (string.IsNullOrEmpty(checklistPath) || !File.Exists(checklistPath))
         {
-            Log.Information("チェックリスト定義フォルダが未設定のため、フォルダ選択ダイアログを表示します");
-
-            var selectedFolder = SelectChecklistDefinitionsFolder(documentRootPath);
-
-            if (!string.IsNullOrEmpty(selectedFolder))
+            checklistPath = PromptForChecklist(documentRootPath, resolvedSettings);
+            if (string.IsNullOrEmpty(checklistPath))
             {
-                pathSettings.ChecklistDefinitionsFolder = selectedFolder;
-                Log.Information("チェックリスト定義フォルダが選択されました: {Folder}", selectedFolder);
-
-                // PathSettings を appsettings.json に保存（永続化）
-                SavePathSettingsToAppSettings(documentRootPath, pathSettings);
-            }
-            else
-            {
-                // キャンセルされた場合はドキュメントルートをデフォルトとして使用
-                pathSettings.ChecklistDefinitionsFolder = documentRootPath;
-                Log.Information("フォルダ選択がキャンセルされたため、documentRootPath を使用します: {Path}", documentRootPath);
+                Log.Warning("Checklist file was not selected. Application start cancelled.");
+                MessageBox.Show(
+                    "チェックリストファイルが選択されなかったため、アプリケーションを終了します。",
+                    "情報",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
             }
         }
 
-        // SelectedChecklistFile が未設定または存在しない場合、チェックリスト選択ダイアログを表示
-        var checklistPath = Path.Combine(documentRootPath, pathSettings.SelectedChecklistFile);
-        if (string.IsNullOrEmpty(pathSettings.SelectedChecklistFile) || !File.Exists(checklistPath))
-        {
-            Log.Information("チェックリストファイルが未設定または存在しないため、選択ダイアログを表示します");
-
-            var selectionDialog = new Dialogs.ChecklistSelectionDialog(documentRootPath, pathSettings);
-            var dialogResult = selectionDialog.ShowDialog();
-
-            if (dialogResult == true && !string.IsNullOrEmpty(selectionDialog.SelectedChecklistFileName))
-            {
-                pathSettings.SelectedChecklistFile = selectionDialog.SelectedChecklistFileName;
-                Log.Information("チェックリストファイルが選択されました: {File}", pathSettings.SelectedChecklistFile);
-
-                // PathSettings を appsettings.json に保存（永続化）
-                SavePathSettingsToAppSettings(documentRootPath, pathSettings);
-            }
-            else
-            {
-                Log.Warning("チェックリストファイルが選択されませんでした。デフォルトを使用します。");
-            }
-        }
+        SavePathSettingsToAppSettings(documentRootPath, resolvedSettings);
 
         var host = new DocumentFileManagerHost();
-        host.Initialize(documentRootPath, pathSettings);
-        Task.Run(() => host.InitializeDatabaseAsync())
-            .GetAwaiter()
-            .GetResult();
+        host.Initialize(documentRootPath, resolvedSettings);
+        host.InitializeDatabaseAsync().GetAwaiter().GetResult();
 
         var mainWindow = host.CreateMainWindow();
-        mainWindow.ShowDialog(); // モーダル表示
+        mainWindow.ShowDialog();
 
         host.Dispose();
     }
 
-    /// <summary>
-    /// チェックリストエディターウィンドウを表示
-    /// </summary>
-    /// <param name="documentRootPath">プロジェクトのルートパス</param>
-    public static void ShowChecklistEditor(string documentRootPath)
-    {
+    public static void ShowChecklistEditor(string documentRootPath) =>
         ShowChecklistEditor(documentRootPath, null);
-    }
 
-    /// <summary>
-    /// チェックリストエディターウィンドウを表示（カスタム設定を指定）
-    /// </summary>
-    /// <param name="documentRootPath">プロジェクトのルートパス</param>
-    /// <param name="pathSettings">パス設定（nullの場合はデフォルト）</param>
     public static void ShowChecklistEditor(string documentRootPath, PathSettings? pathSettings)
     {
+        var resolvedSettings = ResolvePathSettings(documentRootPath, pathSettings);
+        EnsureChecklistDefinitionsFolder(documentRootPath, resolvedSettings);
+        var checklistPath = EnsureChecklistAvailable(documentRootPath, resolvedSettings);
+        if (string.IsNullOrEmpty(checklistPath) || !File.Exists(checklistPath))
+        {
+            checklistPath = PromptForChecklist(documentRootPath, resolvedSettings);
+            if (string.IsNullOrEmpty(checklistPath))
+            {
+                Log.Warning("Checklist file was not selected. Checklist editor will not open.");
+                MessageBox.Show(
+                    "チェックリストファイルが選択されなかったため、エディタを開けません。",
+                    "情報",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+        }
+
+        SavePathSettingsToAppSettings(documentRootPath, resolvedSettings);
+
         var host = new DocumentFileManagerHost();
-        host.Initialize(documentRootPath, pathSettings);
+        host.Initialize(documentRootPath, resolvedSettings);
 
         var editorWindow = host.CreateChecklistEditorWindow();
         editorWindow.ShowDialog();
@@ -138,15 +99,8 @@ public class DocumentFileManagerHost : IDisposable
 
     #endregion
 
-    #region インスタンスメソッド（詳細な制御が必要な場合）
+    #region Host Lifetime
 
-    /// <summary>
-    /// アプリケーションを初期化
-    /// </summary>
-    /// <param name="documentRootPath">プロジェクトのルートパス</param>
-    /// <param name="pathSettings">パス設定（nullの場合はデフォルト）</param>
-    /// <param name="configureLogger">Serilog設定のカスタマイズ（オプション）</param>
-    /// <returns>このインスタンス（メソッドチェーン可能）</returns>
     public DocumentFileManagerHost Initialize(
         string documentRootPath,
         PathSettings? pathSettings = null,
@@ -154,17 +108,17 @@ public class DocumentFileManagerHost : IDisposable
     {
         if (_host != null)
         {
-            throw new InvalidOperationException("既に初期化されています。");
+            throw new InvalidOperationException("Host has already been initialized.");
         }
 
         if (string.IsNullOrWhiteSpace(documentRootPath))
         {
-            throw new ArgumentException("documentRootPathは必須です。", nameof(documentRootPath));
+            throw new ArgumentException("documentRootPath is required.", nameof(documentRootPath));
         }
 
         if (!Directory.Exists(documentRootPath))
         {
-            throw new DirectoryNotFoundException($"指定されたパスが見つかりません: {documentRootPath}");
+            throw new DirectoryNotFoundException($"documentRootPath was not found: {documentRootPath}");
         }
 
         _host = AppInitializer.CreateHost(documentRootPath, pathSettings, configureLogger);
@@ -173,86 +127,62 @@ public class DocumentFileManagerHost : IDisposable
         return this;
     }
 
-    /// <summary>
-    /// データベースマイグレーションとシードデータ投入を実行
-    /// </summary>
-    /// <returns></returns>
     public async Task<DocumentFileManagerHost> InitializeDatabaseAsync()
     {
         if (_host == null)
         {
-            throw new InvalidOperationException("Initialize()を先に呼び出してください。");
+            throw new InvalidOperationException("Initialize() must be called before InitializeDatabaseAsync().");
         }
 
         await AppInitializer.InitializeDatabaseAsync(_host);
         return this;
     }
 
-    /// <summary>
-    /// MainWindowを作成
-    /// </summary>
-    /// <returns>MainWindowインスタンス</returns>
     public MainWindow CreateMainWindow()
     {
         if (_host == null)
         {
-            throw new InvalidOperationException("Initialize()を先に呼び出してください。");
+            throw new InvalidOperationException("Initialize() must be called before creating windows.");
         }
 
         return _host.Services.GetRequiredService<MainWindow>();
     }
 
-    /// <summary>
-    /// ChecklistWindowを作成
-    /// </summary>
-    /// <returns>ChecklistWindowインスタンス</returns>
     public ChecklistWindow CreateChecklistWindow()
     {
         if (_host == null)
         {
-            throw new InvalidOperationException("Initialize()を先に呼び出してください。");
+            throw new InvalidOperationException("Initialize() must be called before creating windows.");
         }
 
         return _host.Services.GetRequiredService<ChecklistWindow>();
     }
 
-    /// <summary>
-    /// ChecklistEditorWindowを作成
-    /// </summary>
-    /// <returns>ChecklistEditorWindowインスタンス</returns>
     public ChecklistEditorWindow CreateChecklistEditorWindow()
     {
         if (_host == null)
         {
-            throw new InvalidOperationException("Initialize()を先に呼び出してください。");
+            throw new InvalidOperationException("Initialize() must be called before creating windows.");
         }
 
         return _host.Services.GetRequiredService<ChecklistEditorWindow>();
     }
 
-    /// <summary>
-    /// SettingsWindowを作成
-    /// </summary>
-    /// <returns>SettingsWindowインスタンス</returns>
     public SettingsWindow CreateSettingsWindow()
     {
         if (_host == null)
         {
-            throw new InvalidOperationException("Initialize()を先に呼び出してください。");
+            throw new InvalidOperationException("Initialize() must be called before creating windows.");
         }
 
         return _host.Services.GetRequiredService<SettingsWindow>();
     }
 
-    /// <summary>
-    /// IntegrityReportWindowを作成
-    /// </summary>
-    /// <returns>IntegrityReportWindowインスタンス</returns>
     public IntegrityReportWindow CreateIntegrityReportWindow()
     {
         if (_host == null)
         {
-            throw new InvalidOperationException("Initialize()を先に呼び出してください。");
+            throw new InvalidOperationException("Initialize() must be called before creating windows.");
         }
 
         return _host.Services.GetRequiredService<IntegrityReportWindow>();
@@ -260,20 +190,168 @@ public class DocumentFileManagerHost : IDisposable
 
     #endregion
 
-    #region ヘルパーメソッド
+    #region Helpers
 
-    /// <summary>
-    /// チェックリスト定義フォルダを選択
-    /// </summary>
-    /// <param name="documentRootPath">デフォルトのドキュメントルートパス</param>
-    /// <returns>選択されたフォルダパス（キャンセル時は null）</returns>
+    private static PathSettings ResolvePathSettings(string documentRootPath, PathSettings? pathSettings)
+    {
+        var appsettingsPath = Path.Combine(documentRootPath, "appsettings.json");
+        var loaded = SettingsPersistence.LoadPathSettingsFromFile(appsettingsPath);
+        var resolved = loaded ?? pathSettings ?? new PathSettings();
+        Directory.CreateDirectory(resolved.ToAbsolutePath(documentRootPath, resolved.ConfigDirectory));
+        return resolved;
+    }
+
+    private static void EnsureChecklistDefinitionsFolder(string documentRootPath, PathSettings pathSettings)
+    {
+        if (!string.IsNullOrWhiteSpace(pathSettings.ChecklistDefinitionsFolder))
+        {
+            return;
+        }
+
+        Log.Information("Checklist definitions folder is not set. Prompting user.");
+        var selectedFolder = SelectChecklistDefinitionsFolder(documentRootPath);
+
+        if (!string.IsNullOrEmpty(selectedFolder))
+        {
+            pathSettings.ChecklistDefinitionsFolder = selectedFolder;
+            Log.Information("Checklist definitions folder selected: {Folder}", selectedFolder);
+        }
+        else
+        {
+            pathSettings.ChecklistDefinitionsFolder = documentRootPath;
+            Log.Information("Folder selection cancelled. Falling back to document root: {Path}", documentRootPath);
+        }
+    }
+
+    private static string EnsureChecklistAvailable(string documentRootPath, PathSettings pathSettings)
+    {
+        var configFolder = pathSettings.ToAbsolutePath(documentRootPath, pathSettings.ConfigDirectory);
+        Directory.CreateDirectory(configFolder);
+
+        foreach (var candidate in EnumerateChecklistCandidates(documentRootPath, pathSettings))
+        {
+            if (string.IsNullOrWhiteSpace(candidate) || !File.Exists(candidate))
+            {
+                continue;
+            }
+
+            return CopyChecklistToConfigIfNeeded(documentRootPath, pathSettings, candidate, configFolder);
+        }
+
+        return string.Empty;
+    }
+
+    private static IEnumerable<string> EnumerateChecklistCandidates(string documentRootPath, PathSettings pathSettings)
+    {
+        if (!string.IsNullOrWhiteSpace(pathSettings.SelectedChecklistFile))
+        {
+            yield return pathSettings.ToAbsolutePath(documentRootPath, pathSettings.SelectedChecklistFile);
+        }
+
+        if (!string.IsNullOrWhiteSpace(pathSettings.ChecklistFile))
+        {
+            yield return pathSettings.ToAbsolutePath(documentRootPath, pathSettings.ChecklistFile);
+        }
+
+        if (!string.IsNullOrWhiteSpace(pathSettings.ChecklistDefinitionsFolder))
+        {
+            var definitionsRoot = pathSettings.ToAbsolutePath(documentRootPath, pathSettings.ChecklistDefinitionsFolder);
+            var selectedName = Path.GetFileName(pathSettings.SelectedChecklistFile);
+            var checklistName = Path.GetFileName(pathSettings.ChecklistFile);
+
+            if (!string.IsNullOrEmpty(selectedName))
+            {
+                yield return Path.Combine(definitionsRoot, selectedName);
+            }
+
+            if (!string.IsNullOrEmpty(checklistName) &&
+                !string.Equals(checklistName, selectedName, StringComparison.OrdinalIgnoreCase))
+            {
+                yield return Path.Combine(definitionsRoot, checklistName);
+            }
+        }
+    }
+
+    private static string PromptForChecklist(string documentRootPath, PathSettings pathSettings)
+    {
+        var dialog = new ChecklistSelectionDialog(documentRootPath, pathSettings);
+        var dialogResult = dialog.ShowDialog();
+
+        if (dialogResult == true && !string.IsNullOrEmpty(dialog.SelectedChecklistFilePath))
+        {
+            var configFolder = pathSettings.ToAbsolutePath(documentRootPath, pathSettings.ConfigDirectory);
+            var copiedPath = CopyChecklistToConfigIfNeeded(
+                documentRootPath,
+                pathSettings,
+                dialog.SelectedChecklistFilePath,
+                configFolder);
+
+            var sourceFolder = Path.GetDirectoryName(dialog.SelectedChecklistFilePath);
+            if (!string.IsNullOrEmpty(sourceFolder))
+            {
+                pathSettings.ChecklistDefinitionsFolder = sourceFolder;
+            }
+
+            Log.Information("Checklist copied locally: {Source} -> {Destination}", dialog.SelectedChecklistFilePath, copiedPath);
+            return copiedPath;
+        }
+
+        return string.Empty;
+    }
+
+    private static string CopyChecklistToConfigIfNeeded(
+        string documentRootPath,
+        PathSettings pathSettings,
+        string sourcePath,
+        string configFolder)
+    {
+        var absoluteSource = Path.GetFullPath(sourcePath);
+        Directory.CreateDirectory(configFolder);
+
+        if (IsPathWithinDirectory(absoluteSource, configFolder))
+        {
+            SetChecklistSelection(documentRootPath, pathSettings, absoluteSource);
+            return absoluteSource;
+        }
+
+        var destinationPath = Path.Combine(configFolder, Path.GetFileName(absoluteSource));
+        File.Copy(absoluteSource, destinationPath, overwrite: true);
+        SetChecklistSelection(documentRootPath, pathSettings, destinationPath);
+
+        var sourceFolder = Path.GetDirectoryName(absoluteSource);
+        if (!string.IsNullOrEmpty(sourceFolder))
+        {
+            pathSettings.ChecklistDefinitionsFolder = sourceFolder;
+        }
+
+        return destinationPath;
+    }
+
+    private static void SetChecklistSelection(string documentRootPath, PathSettings pathSettings, string absolutePath)
+    {
+        var relativePath = Path.GetRelativePath(documentRootPath, absolutePath);
+        pathSettings.SelectedChecklistFile = relativePath;
+        pathSettings.ChecklistFile = relativePath;
+    }
+
+    private static bool IsPathWithinDirectory(string path, string directory)
+    {
+        var normalizedPath = Path.GetFullPath(path)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var normalizedDirectory = Path.GetFullPath(directory)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+        return normalizedPath.StartsWith(
+            normalizedDirectory + Path.DirectorySeparatorChar,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
     private static string? SelectChecklistDefinitionsFolder(string documentRootPath)
     {
-        // OpenFileDialogをフォルダ選択モードで使用
-        var dialog = new Microsoft.Win32.OpenFileDialog
+        var dialog = new OpenFileDialog
         {
-            Title = "チェックリスト定義ファイルの保存先フォルダを選択",
-            FileName = "フォルダ選択",
+            Title = "チェックリスト定義フォルダを選択",
+            FileName = "folder.selector",
             Filter = "フォルダ|*.none",
             CheckFileExists = false,
             CheckPathExists = true,
@@ -282,9 +360,7 @@ public class DocumentFileManagerHost : IDisposable
 
         if (dialog.ShowDialog() == true)
         {
-            // 選択されたファイルのディレクトリを取得
             var selectedFolder = Path.GetDirectoryName(dialog.FileName);
-
             if (!string.IsNullOrEmpty(selectedFolder) && Directory.Exists(selectedFolder))
             {
                 return selectedFolder;
@@ -294,49 +370,37 @@ public class DocumentFileManagerHost : IDisposable
         return null;
     }
 
-    /// <summary>
-    /// PathSettings を appsettings.json に保存
-    /// </summary>
-    /// <param name="documentRootPath">ドキュメントルートパス</param>
-    /// <param name="pathSettings">保存する PathSettings</param>
     private static void SavePathSettingsToAppSettings(string documentRootPath, PathSettings pathSettings)
     {
         try
         {
-            // 設定ファイルパスを取得
             var settingsPath = Path.Combine(documentRootPath, pathSettings.SettingsFile);
-
-            // 新しいJSONを構築
-            var options = new System.Text.Json.JsonSerializerOptions
-            {
-                WriteIndented = true,
-                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-            };
+            var options = new JsonWriterOptions { Indented = true };
 
             using var stream = new MemoryStream();
-            using (var writer = new System.Text.Json.Utf8JsonWriter(stream, new System.Text.Json.JsonWriterOptions { Indented = true }))
+            using (var writer = new Utf8JsonWriter(stream, options))
             {
                 writer.WriteStartObject();
 
-                // ファイルが存在する場合は既存のセクションをコピー
                 if (File.Exists(settingsPath))
                 {
-                    string jsonContent = File.ReadAllText(settingsPath);
-                    using var document = System.Text.Json.JsonDocument.Parse(jsonContent);
+                    var jsonContent = File.ReadAllText(settingsPath);
+                    using var document = JsonDocument.Parse(jsonContent);
                     var root = document.RootElement;
 
-                    // Logging セクションをコピー
                     if (root.TryGetProperty("Logging", out var loggingElement))
                     {
                         writer.WritePropertyName("Logging");
                         loggingElement.WriteTo(writer);
                     }
 
-                    // PathSettings セクションを書き込み（更新された値を使用）
                     writer.WritePropertyName("PathSettings");
-                    System.Text.Json.JsonSerializer.Serialize(writer, pathSettings, options);
+                    JsonSerializer.Serialize(writer, pathSettings, new JsonSerializerOptions
+                    {
+                        WriteIndented = true,
+                        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                    });
 
-                    // UISettings セクションをコピー
                     if (root.TryGetProperty("UISettings", out var uiSettingsElement))
                     {
                         writer.WritePropertyName("UISettings");
@@ -345,35 +409,33 @@ public class DocumentFileManagerHost : IDisposable
                 }
                 else
                 {
-                    // ファイルが存在しない場合は新規作成（PathSettingsのみ）
                     writer.WritePropertyName("PathSettings");
-                    System.Text.Json.JsonSerializer.Serialize(writer, pathSettings, options);
+                    JsonSerializer.Serialize(writer, pathSettings, new JsonSerializerOptions
+                    {
+                        WriteIndented = true,
+                        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                    });
 
-                    Log.Information("appsettings.json が存在しないため、新規作成します: {Path}", settingsPath);
+                    Log.Information("Created new appsettings.json at {Path}", settingsPath);
                 }
 
                 writer.WriteEndObject();
             }
 
-            // ファイルに書き込み
-            var json = System.Text.Encoding.UTF8.GetString(stream.ToArray());
+            var json = Encoding.UTF8.GetString(stream.ToArray());
             File.WriteAllText(settingsPath, json);
-
-            Log.Information("PathSettings を appsettings.json に保存しました: {Path}", settingsPath);
+            Log.Information("PathSettings persisted to {Path}", settingsPath);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "PathSettings の保存に失敗しました");
+            Log.Error(ex, "Failed to persist PathSettings.");
         }
     }
 
     #endregion
 
-    #region IDisposable実装
+    #region IDisposable
 
-    /// <summary>
-    /// リソースを解放
-    /// </summary>
     public void Dispose()
     {
         Dispose(true);

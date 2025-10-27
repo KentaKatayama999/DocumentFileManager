@@ -193,10 +193,14 @@ documentRootPath/
 ```json
 {
   "PathSettings": {
-    "LogsFolder": "Logs",
+    "LogsFolder": "logs",
     "DatabaseName": "workspace.db",
-    "ChecklistFile": "checklist.json",
-    "SelectedChecklistFile": "checklist.json",
+    "ConfigDirectory": "config",
+    "DocumentsDirectory": "documents",
+    "ChecklistFile": "config/checklist.json",
+    "SelectedChecklistFile": "config/checklist.json",
+    "ChecklistDefinitionsFolder": "",
+    "SettingsFile": "appsettings.json",
     "CapturesDirectory": "captures"
   },
   "UISettings": {
