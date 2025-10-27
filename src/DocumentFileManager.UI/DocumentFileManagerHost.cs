@@ -1,4 +1,5 @@
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows;
 using DocumentFileManager.UI.Configuration;
 using DocumentFileManager.UI.Windows;
@@ -100,7 +101,9 @@ public class DocumentFileManagerHost : IDisposable
 
         var host = new DocumentFileManagerHost();
         host.Initialize(documentRootPath, pathSettings);
-        host.InitializeDatabaseAsync().Wait();
+        Task.Run(() => host.InitializeDatabaseAsync())
+            .GetAwaiter()
+            .GetResult();
 
         var mainWindow = host.CreateMainWindow();
         mainWindow.ShowDialog(); // モーダル表示
