@@ -69,7 +69,12 @@ public static class AppInitializer
                 {
                     var dbPath = Path.Combine(documentRootPath, pathSettings.DatabaseName);
                     Log.Information("DBパス: {DbPath}", dbPath);
-                    options.UseSqlite($"Data Source={dbPath}");
+
+                    // パフォーマンス最適化された接続文字列
+                    // Cache=Shared: 複数接続でキャッシュ共有
+                    var connectionString = $"Data Source={dbPath};Cache=Shared";
+                    Log.Information("SQLite接続文字列: Cache=Shared");
+                    options.UseSqlite(connectionString);
                 });
 
                 // UI設定の登録（デフォルト値を使用）

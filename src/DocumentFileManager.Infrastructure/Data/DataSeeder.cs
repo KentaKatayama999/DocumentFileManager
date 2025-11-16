@@ -127,9 +127,10 @@ public class DataSeeder
         // 階層構造を再帰的に同期
         await SyncCheckItemsRecursiveAsync(definitions, null, null, jsonPaths);
 
-        // JSONにないDB項目を削除
-        var allDbItems = await _context.CheckItems.ToListAsync();
-        var itemsToDelete = allDbItems.Where(item => !jsonPaths.Contains(item.Path)).ToList();
+        // JSONにないDB項目を削除（全件取得せずにSQLで直接削除）
+        var itemsToDelete = await _context.CheckItems
+            .Where(item => !jsonPaths.Contains(item.Path))
+            .ToListAsync();
 
         if (itemsToDelete.Any())
         {
@@ -142,7 +143,7 @@ public class DataSeeder
     }
 
     /// <summary>
-    /// チェック項目を再帰的にDBと同期する
+    /// チェック項目を再帰的にDBと同期する（バッチ処理版・N+1問題解決）
     /// </summary>
     /// <param name="definitions">チェック項目定義リスト</param>
     /// <param name="parentPath">親のパス</param>
@@ -154,23 +155,32 @@ public class DataSeeder
         int? parentId,
         HashSet<string> jsonPaths)
     {
-        foreach (var def in definitions)
+        // 同じ階層のすべてのパスを先に生成
+        var pathsToSync = definitions.Select(def =>
         {
-            // パスを生成
-            var currentPath = string.IsNullOrEmpty(parentPath)
-                ? def.Label
-                : $"{parentPath}/{def.Label}";
+            var currentPath = string.IsNullOrEmpty(parentPath) ? def.Label : $"{parentPath}/{def.Label}";
+            return (def, currentPath);
+        }).ToList();
 
-            // JSONパスセットに追加
+        // この階層のすべてのパスをJSONパスセットに追加
+        foreach (var (_, currentPath) in pathsToSync)
+        {
             jsonPaths.Add(currentPath);
+        }
 
-            // 既存項目を検索
-            var existingItem = await _context.CheckItems
-                .FirstOrDefaultAsync(c => c.Path == currentPath);
+        // この階層のすべての既存項目を一度に取得（N+1問題解決）
+        var paths = pathsToSync.Select(x => x.currentPath).ToList();
+        var existingItems = await _context.CheckItems
+            .Where(c => paths.Contains(c.Path))
+            .ToDictionaryAsync(c => c.Path);
 
+        // この階層のすべての項目を処理（メモリ上で）
+        var checkItems = new List<CheckItem>();
+        foreach (var (def, currentPath) in pathsToSync)
+        {
             CheckItem checkItem;
 
-            if (existingItem != null)
+            if (existingItems.TryGetValue(currentPath, out var existingItem))
             {
                 // 既存項目を更新（Statusは維持）
                 existingItem.Label = def.Label;
@@ -197,12 +207,22 @@ public class DataSeeder
                     checkItem.Path, checkItem.Status);
             }
 
-            await _context.SaveChangesAsync(); // すぐに保存してIDを取得
+            checkItems.Add(checkItem);
+        }
 
-            // 子要素を再帰的に処理
+        // この階層のすべての変更を一度に保存（バッチ処理）
+        await _context.SaveChangesAsync();
+        _logger.LogDebug("階層 {ParentPath} の {Count} 項目を保存しました", parentPath ?? "ルート", checkItems.Count);
+
+        // 子要素を再帰的に処理
+        for (int i = 0; i < definitions.Count; i++)
+        {
+            var def = definitions[i];
+            var checkItem = checkItems[i];
+
             if (def.Children != null && def.Children.Count > 0)
             {
-                await SyncCheckItemsRecursiveAsync(def.Children, currentPath, checkItem.Id, jsonPaths);
+                await SyncCheckItemsRecursiveAsync(def.Children, checkItem.Path, checkItem.Id, jsonPaths);
             }
         }
     }
