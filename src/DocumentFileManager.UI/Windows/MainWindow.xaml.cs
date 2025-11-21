@@ -729,7 +729,7 @@ public partial class MainWindow : Window
             var checklistSaver = _serviceProvider.GetRequiredService<Infrastructure.Services.ChecklistSaver>();
             var pathSettings = _serviceProvider.GetRequiredService<PathSettings>();
             var checklistLogger = _serviceProvider.GetRequiredService<ILogger<ChecklistWindow>>();
-            _checklistWindow = new ChecklistWindow(document, checkItemUIBuilder, checkItemDocumentRepository, checkItemRepository, checklistSaver, pathSettings, checklistLogger, documentWindowHandle)
+            _checklistWindow = new ChecklistWindow(document, checkItemUIBuilder, checkItemDocumentRepository, checkItemRepository, checklistSaver, pathSettings, checklistLogger, _documentRootPath, documentWindowHandle)
             {
                 Owner = null // Ownerを設定しない（MainWindowとの親子関係を切る）
             };

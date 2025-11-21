@@ -66,6 +66,7 @@ public partial class ChecklistWindow : Window
     private readonly ILogger<ChecklistWindow> _logger;
     private readonly Document _document;
     private readonly ScreenCaptureService _captureService;
+    private readonly string _documentRootPath;
     private bool _isDockingRight = true; // デフォルトは右端
     private bool _isAdjustingPosition = false; // 位置調整中フラグ
     private IntPtr _documentWindowHandle = IntPtr.Zero; // 開いた資料のウィンドウハンドル
@@ -77,8 +78,9 @@ public partial class ChecklistWindow : Window
         ICheckItemRepository checkItemRepository,
         Infrastructure.Services.ChecklistSaver checklistSaver,
         PathSettings pathSettings,
-        ILogger<ChecklistWindow> logger)
-        : this(document, checkItemUIBuilder, checkItemDocumentRepository, checkItemRepository, checklistSaver, pathSettings, logger, IntPtr.Zero)
+        ILogger<ChecklistWindow> logger,
+        string documentRootPath)
+        : this(document, checkItemUIBuilder, checkItemDocumentRepository, checkItemRepository, checklistSaver, pathSettings, logger, documentRootPath, IntPtr.Zero)
     {
     }
 
@@ -90,6 +92,7 @@ public partial class ChecklistWindow : Window
         Infrastructure.Services.ChecklistSaver checklistSaver,
         PathSettings pathSettings,
         ILogger<ChecklistWindow> logger,
+        string documentRootPath,
         IntPtr documentWindowHandle)
     {
         _document = document;
@@ -99,6 +102,7 @@ public partial class ChecklistWindow : Window
         _checklistSaver = checklistSaver;
         _pathSettings = pathSettings;
         _logger = logger;
+        _documentRootPath = documentRootPath;
         _documentWindowHandle = documentWindowHandle;
         _captureService = new ScreenCaptureService();
 
@@ -382,12 +386,7 @@ public partial class ChecklistWindow : Window
                 // すべてのチェック項目を取得してJSONに保存
                 var allCheckItems = await _checkItemRepository.GetAllWithChildrenAsync();
 
-                var projectRoot = Path.Combine(
-                    Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "",
-                    "..", "..", "..", "..", "..");
-                projectRoot = Path.GetFullPath(projectRoot);
-
-                var jsonFilePath = Path.Combine(projectRoot, _pathSettings.SelectedChecklistFile);
+                var jsonFilePath = Path.Combine(_documentRootPath, _pathSettings.SelectedChecklistFile);
 
                 await _checklistSaver.SaveAsync(allCheckItems, jsonFilePath);
 
@@ -581,7 +580,7 @@ public partial class ChecklistWindow : Window
                     (int)selectedArea.Width,
                     (int)selectedArea.Height);
 
-                using (var bitmap = CaptureRectangle(rectangle))
+                using (var bitmap = _captureService.CaptureRectangle(rectangle))
                 {
                     // BitmapをBitmapSourceに変換
                     var bitmapSource = ConvertBitmapToBitmapSource(bitmap);
@@ -616,20 +615,7 @@ public partial class ChecklistWindow : Window
         }
     }
 
-    /// <summary>
-    /// 指定された矩形領域をキャプチャ
-    /// </summary>
-    private System.Drawing.Bitmap CaptureRectangle(System.Drawing.Rectangle bounds)
-    {
-        var bitmap = new System.Drawing.Bitmap(bounds.Width, bounds.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
 
-        using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
-        {
-            graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bounds.Size, System.Drawing.CopyPixelOperation.SourceCopy);
-        }
-
-        return bitmap;
-    }
 
     /// <summary>
     /// System.Drawing.BitmapをWPF BitmapSourceに変換
@@ -660,18 +646,12 @@ public partial class ChecklistWindow : Window
         {
             _logger.LogInformation("チェック項目のキャプチャを開始: {Path}", viewModel.Path);
 
-            // プロジェクトルートを取得
-            var projectRoot = Path.Combine(
-                Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "",
-                "..", "..", "..", "..", "..");
-            projectRoot = Path.GetFullPath(projectRoot);
-
             // キャプチャファイルパスを生成
             var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            var capturesDir = Path.Combine(projectRoot, _pathSettings.CapturesDirectory, $"document_{_document.Id}");
+            var capturesDir = Path.Combine(_documentRootPath, _pathSettings.CapturesDirectory, $"document_{_document.Id}");
             var fileName = $"checkitem_{viewModel.Entity.Id}_{timestamp}.png";
             var relativePath = Path.Combine(_pathSettings.CapturesDirectory, $"document_{_document.Id}", fileName);
-            var absolutePath = Path.Combine(projectRoot, relativePath);
+            var absolutePath = Path.Combine(_documentRootPath, relativePath);
 
             // ディレクトリが存在しない場合は作成
             if (!Directory.Exists(capturesDir))
@@ -705,7 +685,7 @@ public partial class ChecklistWindow : Window
                     (int)selectedArea.Width,
                     (int)selectedArea.Height);
 
-                using (var bitmap = CaptureRectangle(rectangle))
+                using (var bitmap = _captureService.CaptureRectangle(rectangle))
                 {
                     // BitmapをBitmapSourceに変換
                     var bitmapSource = ConvertBitmapToBitmapSource(bitmap);

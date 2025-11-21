@@ -104,7 +104,7 @@ public class ScreenCaptureService
     /// <summary>
     /// 指定された矩形領域をキャプチャ
     /// </summary>
-    private Bitmap CaptureRectangle(Rectangle bounds)
+    public Bitmap CaptureRectangle(Rectangle bounds)
     {
         var bitmap = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format32bppArgb);
 
