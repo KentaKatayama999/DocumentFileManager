@@ -9,10 +9,10 @@
 
     <!-- NuGet パッケージ設定 -->
     <PackageId>DocumentFileManager.UI</PackageId>
-    <Version>1.0.2</Version>
+    <Version>1.2.4</Version>
     <Authors>DocumentFileManager Contributors</Authors>
     <Company>DocumentFileManager</Company>
-    <Description>A WPF-based document file manager library that can be integrated into other applications. Supports document management, checklist functionality, and screen capture features. v1.0.2: Refactored capture logic and fixed capture path to use documentRootPath.</Description>
+    <Description>A WPF-based document file manager library that can be integrated into other applications. Supports document management, checklist functionality, and screen capture features. v1.2.4: Refactored capture logic and fixed capture path to use documentRootPath.</Description>
     <PackageTags>wpf;document-manager;checklist;file-management</PackageTags>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <IsPackable>true</IsPackable>
