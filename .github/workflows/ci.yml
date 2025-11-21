@@ -42,3 +42,13 @@ jobs:
         with:
           name: test-results
           path: ./coverage
+
+      - name: Pack NuGet package
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: dotnet pack src/DocumentFileManager.UI/DocumentFileManager.UI.csproj -c Release --no-build
+
+      - name: Push to GitHub Packages
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: dotnet nuget push "src/DocumentFileManager.UI/bin/Release/*.nupkg" --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --api-key ${{ secrets.GITHUB_TOKEN }} --skip-duplicate
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
