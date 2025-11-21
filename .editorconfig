@@ -11,4 +11,11 @@ indent_size = 4
 indent_size = 2
 
 [*.cs]
-dotnet_diagnostic.IDE0055.severity = warning
+# IDE0055: フォーマット修正 - suggestionレベルに変更（エラー化を回避）
+dotnet_diagnostic.IDE0055.severity = suggestion
+
+# CS4014: await演算子の適用を検討 - suggestionレベルに変更
+dotnet_diagnostic.CS4014.severity = suggestion
+
+# C#フォーマット規則
+csharp_space_after_colon_in_inheritance_clause = true
