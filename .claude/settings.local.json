@@ -50,7 +50,9 @@
       "Bash(Select-Object -First 20)",
       "Bash(python:*)",
       "Bash(dotnet test:*)",
-      "Bash(Select-String -Pattern \"成功|失敗|エラー|警告|error|warning|テストの合計数|合計時間\" -Context 1)"
+      "Bash(Select-String -Pattern \"成功|失敗|エラー|警告|error|warning|テストの合計数|合計時間\" -Context 1)",
+      "Bash(dotnet pack:*)",
+      "Bash(dotnet nuget push:*)"
     ],
     "deny": [],
     "ask": []
