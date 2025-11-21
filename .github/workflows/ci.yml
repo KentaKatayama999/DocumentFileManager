@@ -49,6 +49,12 @@ jobs:
 
       - name: Push to GitHub Packages
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: dotnet nuget push "src/DocumentFileManager.UI/bin/Release/*.nupkg" --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --api-key ${{ secrets.GITHUB_TOKEN }} --skip-duplicate
+        shell: pwsh
+        run: |
+          $packages = Get-ChildItem -Path "src/DocumentFileManager.UI/bin/Release" -Filter "*.nupkg" -Recurse
+          foreach ($package in $packages) {
+            Write-Host "Pushing $($package.FullName)"
+            dotnet nuget push "$($package.FullName)" --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --api-key ${{ secrets.GITHUB_TOKEN }} --skip-duplicate
+          }
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
