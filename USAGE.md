@@ -12,6 +12,10 @@
 - [画面キャプチャ](#画面キャプチャ)
 - [設定のカスタマイズ](#設定のカスタマイズ)
 - [データ整合性チェック](#データ整合性チェック)
+- [親アプリからの呼び出し](#親アプリからの呼び出し)
+- [サービスAPI](#サービスapi)
+  - [IDocumentService - 資料登録API](#idocumentservice---資料登録api)
+  - [IChecklistService - チェックリスト管理API](#ichecklistservice---チェックリスト管理api)
 
 ## 起動方法
 
@@ -323,6 +327,175 @@ var process = new Process
     }
 };
 process.Start();
+```
+
+## サービスAPI
+
+外部から呼び出し可能なサービスAPIを提供しています。DIコンテナから取得して使用できます。
+
+### IDocumentService - 資料登録API
+
+資料ファイルをデータベースに登録するためのサービスです。
+
+```csharp
+using DocumentFileManager.UI.Services;
+using Microsoft.Extensions.DependencyInjection;
+
+// DIコンテナからサービスを取得
+var documentService = serviceProvider.GetRequiredService<IDocumentService>();
+
+// 単一ファイルの登録
+var result = await documentService.RegisterDocumentAsync("C:\\path\\to\\file.pdf");
+if (result.Success)
+{
+    Console.WriteLine($"登録成功: {result.Document.FileName}");
+    Console.WriteLine($"ファイルタイプ: {result.Document.FileType}");
+}
+else if (result.Skipped)
+{
+    Console.WriteLine($"スキップ: {result.ErrorMessage}");
+}
+else
+{
+    Console.WriteLine($"エラー: {result.ErrorMessage}");
+}
+
+// 複数ファイルの一括登録
+var files = new[] {
+    "C:\\path\\to\\file1.pdf",
+    "C:\\path\\to\\file2.docx",
+    "C:\\path\\to\\file3.xlsx"
+};
+var results = await documentService.RegisterDocumentsAsync(files);
+
+foreach (var r in results)
+{
+    if (r.Success)
+    {
+        Console.WriteLine($"✓ {r.Document.FileName}");
+    }
+    else
+    {
+        Console.WriteLine($"✗ {r.ErrorMessage}");
+    }
+}
+```
+
+**メソッド一覧:**
+
+| メソッド | 説明 |
+|---------|------|
+| `RegisterDocumentAsync(string filePath)` | 単一ファイルを登録 |
+| `RegisterDocumentsAsync(IEnumerable<string> filePaths)` | 複数ファイルを一括登録 |
+
+**DocumentRegistrationResult プロパティ:**
+
+| プロパティ | 型 | 説明 |
+|-----------|-----|------|
+| `Success` | bool | 登録成功かどうか |
+| `Document` | Document? | 登録されたDocumentエンティティ（成功時のみ） |
+| `Skipped` | bool | 重複でスキップされたかどうか |
+| `ErrorMessage` | string? | エラーメッセージ（失敗時のみ） |
+
+**動作仕様:**
+- 指定されたファイルを `documentRootPath` 配下にコピー
+- ファイル名が重複する場合は連番を付与（例: `file_1.pdf`）
+- データベースに同じ RelativePath が存在する場合はスキップ
+- パストラバーサル攻撃を防止するセキュリティチェック付き
+
+### IChecklistService - チェックリスト管理API
+
+チェックリストの作成・管理を行うサービスです。
+
+```csharp
+using DocumentFileManager.UI.Services;
+using Microsoft.Extensions.DependencyInjection;
+
+// DIコンテナからサービスを取得
+var checklistService = serviceProvider.GetRequiredService<IChecklistService>();
+
+// 新規チェックリストの作成
+var result = await checklistService.CreateNewChecklistAsync("新規プロジェクト用チェックリスト");
+if (result.Success)
+{
+    Console.WriteLine($"作成成功: {result.FileName}");
+    Console.WriteLine($"ファイルパス: {result.FilePath}");
+
+    if (result.Overwritten)
+    {
+        Console.WriteLine("※ 既存ファイルを上書きしました");
+    }
+}
+else
+{
+    Console.WriteLine($"エラー: {result.ErrorMessage}");
+}
+
+// チェックリストの存在確認
+string fileName = "checklist_テスト.json";
+if (checklistService.ChecklistExists(fileName))
+{
+    Console.WriteLine($"{fileName} は存在します");
+}
+else
+{
+    Console.WriteLine($"{fileName} は存在しません");
+}
+```
+
+**メソッド一覧:**
+
+| メソッド | 説明 |
+|---------|------|
+| `CreateNewChecklistAsync(string checklistName)` | 新規チェックリストを作成 |
+| `ChecklistExists(string fileName)` | チェックリストファイルの存在確認 |
+
+**ChecklistCreationResult プロパティ:**
+
+| プロパティ | 型 | 説明 |
+|-----------|-----|------|
+| `Success` | bool | 作成成功かどうか |
+| `FileName` | string? | 作成されたファイル名（例: `checklist_プロジェクトA.json`） |
+| `FilePath` | string? | 作成されたファイルの絶対パス |
+| `Overwritten` | bool | 既存ファイルを上書きしたかどうか |
+| `ErrorMessage` | string? | エラーメッセージ（失敗時のみ） |
+
+**動作仕様:**
+- チェックリスト名から自動的にファイル名を生成（`checklist_{name}.json`）
+- 不正な文字（ファイル名に使用できない文字）は自動的に除去
+- 同名ファイルが存在する場合は上書き
+- 作成後、`PathSettings.SelectedChecklistFile` を更新
+- 既存のチェック項目をクリア（新しいチェックリスト用）
+
+### DIコンテナの設定
+
+サービスは `AppInitializer.cs` で自動的にDIコンテナに登録されます：
+
+```csharp
+// AppInitializer.cs での登録（自動）
+services.AddScoped<IDocumentService, DocumentService>();
+services.AddScoped<IChecklistService, ChecklistService>();
+```
+
+親アプリケーションから使用する場合は、DIコンテナを構築する必要があります：
+
+```csharp
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+// ホストビルダーを使用してDIコンテナを構築
+var host = Host.CreateDefaultBuilder(args)
+    .ConfigureServices((context, services) =>
+    {
+        // AppInitializerを使用してサービスを登録
+        var documentRootPath = @"C:\Projects\ProjectA\Document";
+        AppInitializer.ConfigureServices(services, documentRootPath);
+    })
+    .Build();
+
+// サービスを取得して使用
+var documentService = host.Services.GetRequiredService<IDocumentService>();
+var checklistService = host.Services.GetRequiredService<IChecklistService>();
 ```
 
 ## さらに詳しい情報

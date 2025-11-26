@@ -211,6 +211,68 @@ SQLite データベース（`workspace.db`）に以下のテーブルを作成�
 - **MVVM パターン**: UI とロジックの分離（WPF）
 - **プロジェクト固有DB**: データの独立性と可搬性を確保
 
+## サービスAPI
+
+外部から呼び出し可能なサービスAPIを提供しています。DIコンテナから取得して使用できます。
+
+### IDocumentService - 資料登録API
+
+```csharp
+// DIコンテナからサービスを取得
+var documentService = serviceProvider.GetRequiredService<IDocumentService>();
+
+// 単一ファイルの登録
+var result = await documentService.RegisterDocumentAsync("C:\\path\\to\\file.pdf");
+if (result.Success)
+{
+    Console.WriteLine($"登録成功: {result.Document.FileName}");
+}
+
+// 複数ファイルの一括登録
+var results = await documentService.RegisterDocumentsAsync(new[] {
+    "C:\\path\\to\\file1.pdf",
+    "C:\\path\\to\\file2.docx"
+});
+```
+
+**メソッド:**
+- `RegisterDocumentAsync(string filePath)` - 単一ファイルを登録
+- `RegisterDocumentsAsync(IEnumerable<string> filePaths)` - 複数ファイルを一括登録
+
+**戻り値 (DocumentRegistrationResult):**
+- `Success` - 登録成功かどうか
+- `Document` - 登録されたDocumentエンティティ
+- `Skipped` - 重複でスキップされたかどうか
+- `ErrorMessage` - エラーメッセージ
+
+### IChecklistService - チェックリスト管理API
+
+```csharp
+// DIコンテナからサービスを取得
+var checklistService = serviceProvider.GetRequiredService<IChecklistService>();
+
+// 新規チェックリストの作成
+var result = await checklistService.CreateNewChecklistAsync("新規プロジェクト用チェックリスト");
+if (result.Success)
+{
+    Console.WriteLine($"作成成功: {result.FilePath}");
+}
+
+// チェックリストの存在確認
+bool exists = checklistService.ChecklistExists("checklist_test.json");
+```
+
+**メソッド:**
+- `CreateNewChecklistAsync(string checklistName)` - 新規チェックリストを作成
+- `ChecklistExists(string fileName)` - チェックリストファイルの存在確認
+
+**戻り値 (ChecklistCreationResult):**
+- `Success` - 作成成功かどうか
+- `FileName` - 作成されたファイル名
+- `FilePath` - 作成されたファイルの絶対パス
+- `Overwritten` - 既存ファイルを上書きしたかどうか
+- `ErrorMessage` - エラーメッセージ
+
 ## 開発状況
 
 ### 完了
@@ -228,6 +290,7 @@ SQLite データベース（`workspace.db`）に以下のテーブルを作成�
 - ✅ プロジェクト固有DB管理
 - ✅ コマンドライン引数対応
 - ✅ 個人設定対応（appsettings.local.json）
+- ✅ サービスAPI（IDocumentService, IChecklistService）
 
 ### 進行中
 - 🔄 テスト実装

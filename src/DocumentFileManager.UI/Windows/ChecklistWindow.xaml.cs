@@ -56,7 +56,14 @@ public partial class ChecklistWindow : Window
     [DllImport("user32.dll")]
     private static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
     private const uint WM_CLOSE = 0x0010;
+    private const int SW_RESTORE = 9;
 
     private readonly CheckItemUIBuilder _checkItemUIBuilder;
     private readonly ICheckItemDocumentRepository _checkItemDocumentRepository;
@@ -261,11 +268,27 @@ public partial class ChecklistWindow : Window
         try
         {
             var workArea = SystemParameters.WorkArea;
+
+            // ChecklistWindowを左に配置
             Left = workArea.Left;
             Top = workArea.Top;
             Height = workArea.Height;
 
-            _logger.LogDebug("ウィンドウを左端に配置: Left={Left}, Top={Top}", Left, Top);
+            _logger.LogDebug("ChecklistWindowを左端に配置: Left={Left}, Top={Top}", Left, Top);
+
+            // ViewerWindow（資料ウィンドウ）を右に配置
+            if (_documentWindowHandle != IntPtr.Zero)
+            {
+                ShowWindow(_documentWindowHandle, SW_RESTORE); // 最大化を解除
+                int viewerX = (int)(workArea.Left + ActualWidth);
+                int viewerY = (int)workArea.Top;
+                int viewerWidth = (int)(workArea.Width - ActualWidth);
+                int viewerHeight = (int)workArea.Height;
+
+                SetWindowPos(_documentWindowHandle, IntPtr.Zero, viewerX, viewerY, viewerWidth, viewerHeight, 0);
+                _logger.LogDebug("ViewerWindowを右端に配置: X={X}, Y={Y}, Width={Width}, Height={Height}",
+                    viewerX, viewerY, viewerWidth, viewerHeight);
+            }
         }
         finally
         {
@@ -284,11 +307,27 @@ public partial class ChecklistWindow : Window
         try
         {
             var workArea = SystemParameters.WorkArea;
+
+            // ChecklistWindowを右に配置
             Left = workArea.Right - ActualWidth;
             Top = workArea.Top;
             Height = workArea.Height;
 
-            _logger.LogDebug("ウィンドウを右端に配置: Left={Left}, Top={Top}", Left, Top);
+            _logger.LogDebug("ChecklistWindowを右端に配置: Left={Left}, Top={Top}", Left, Top);
+
+            // ViewerWindow（資料ウィンドウ）を左に配置
+            if (_documentWindowHandle != IntPtr.Zero)
+            {
+                ShowWindow(_documentWindowHandle, SW_RESTORE); // 最大化を解除
+                int viewerX = (int)workArea.Left;
+                int viewerY = (int)workArea.Top;
+                int viewerWidth = (int)(workArea.Width - ActualWidth);
+                int viewerHeight = (int)workArea.Height;
+
+                SetWindowPos(_documentWindowHandle, IntPtr.Zero, viewerX, viewerY, viewerWidth, viewerHeight, 0);
+                _logger.LogDebug("ViewerWindowを左端に配置: X={X}, Y={Y}, Width={Width}, Height={Height}",
+                    viewerX, viewerY, viewerWidth, viewerHeight);
+            }
         }
         finally
         {

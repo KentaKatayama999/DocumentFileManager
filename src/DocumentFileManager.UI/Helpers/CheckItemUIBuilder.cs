@@ -22,6 +22,7 @@ public class CheckItemUIBuilder
     private readonly ICheckItemDocumentRepository _checkItemDocumentRepository;
     private readonly UISettings _settings;
     private readonly ILogger<CheckItemUIBuilder> _logger;
+    private readonly string _documentRootPath;
     private Document? _currentDocument;
     private Func<CheckItemViewModel, UIElement, Task>? _onCaptureRequested;
 
@@ -29,12 +30,14 @@ public class CheckItemUIBuilder
         ICheckItemRepository repository,
         ICheckItemDocumentRepository checkItemDocumentRepository,
         UISettings settings,
-        ILogger<CheckItemUIBuilder> logger)
+        ILogger<CheckItemUIBuilder> logger,
+        string documentRootPath)
     {
         _repository = repository;
         _checkItemDocumentRepository = checkItemDocumentRepository;
         _settings = settings;
         _logger = logger;
+        _documentRootPath = documentRootPath;
     }
 
     /// <summary>
@@ -303,13 +306,9 @@ public class CheckItemUIBuilder
         {
             if (viewModel.CaptureFilePath != null)
             {
-                var absolutePath = Path.Combine(
-                    Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "",
-                    "..", "..", "..", "..", "..",
-                    viewModel.CaptureFilePath);
-                absolutePath = Path.GetFullPath(absolutePath);
+                var absolutePath = ResolveCaptureFilePath(viewModel.CaptureFilePath);
 
-                _logger.LogInformation("キャプチャ画像を表示: {Path}", absolutePath);
+                _logger.LogInformation("キャプチャ画像を表示: {Path} (documentRootPath: {Root})", absolutePath, _documentRootPath);
 
                 var viewer = new CaptureImageViewerWindow(absolutePath, null);
                 bool? result = viewer.ShowDialog();
@@ -455,4 +454,25 @@ public class CheckItemUIBuilder
             _ => new SolidColorBrush(Color.FromRgb(_settings.Colors.DepthDefault.R, _settings.Colors.DepthDefault.G, _settings.Colors.DepthDefault.B))
         };
     }
+
+    /// <summary>
+    /// キャプチャファイルの相対パスから絶対パスを解決する
+    /// </summary>
+    /// <param name="captureFilePath">キャプチャファイルの相対パス</param>
+    /// <returns>絶対パス</returns>
+    public string ResolveCaptureFilePath(string captureFilePath)
+    {
+        if (string.IsNullOrEmpty(captureFilePath))
+        {
+            throw new ArgumentNullException(nameof(captureFilePath));
+        }
+
+        var absolutePath = Path.Combine(_documentRootPath, captureFilePath);
+        return Path.GetFullPath(absolutePath);
+    }
+
+    /// <summary>
+    /// documentRootPathを取得する（テスト用）
+    /// </summary>
+    public string DocumentRootPath => _documentRootPath;
 }

@@ -92,6 +92,8 @@ public static class AppInitializer
                 services.AddSingleton<SettingsPersistence>();
                 services.AddScoped<Infrastructure.Services.ChecklistLoader>();
                 services.AddScoped<Infrastructure.Services.ChecklistSaver>();
+                services.AddScoped<IDocumentService, DocumentService>();
+                services.AddScoped<IChecklistService, ChecklistService>();
 
                 // UIヘルパーの登録
                 services.AddScoped<CheckItemUIBuilder>();
