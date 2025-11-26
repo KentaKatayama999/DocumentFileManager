@@ -9,14 +9,14 @@
 
     <!-- NuGet パッケージ設定 -->
     <PackageId>DocumentFileManager.UI</PackageId>
-    <Version>1.2.5</Version>
+    <Version>1.3.0</Version>
     <Authors>DocumentFileManager Contributors</Authors>
     <Company>DocumentFileManager</Company>
-    <Description>A WPF-based document file manager library that can be integrated into other applications. Supports document management, checklist functionality, and screen capture features. v1.2.5: Refactored capture logic and fixed capture path to use documentRootPath.</Description>
+    <Description>A WPF-based document file manager library that can be integrated into other applications. Supports document management, checklist functionality, and screen capture features. v1.3.0: Bug fixes (Issue #1-5) and new API services (IChecklistService, IDocumentService).</Description>
     <PackageTags>wpf;document-manager;checklist;file-management</PackageTags>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <IsPackable>true</IsPackable>
-    <PackageReadmeFile></PackageReadmeFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/KentaKatayama999/DocumentFileManager</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
@@ -45,6 +45,10 @@
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
