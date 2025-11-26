@@ -7,7 +7,7 @@
 
     <!-- NuGet パッケージ設定 -->
     <PackageId>DocumentFileManager</PackageId>
-    <Version>1.2.5</Version>
+    <Version>1.3.0</Version>
     <Authors>DocumentFileManager Contributors</Authors>
     <Company>DocumentFileManager</Company>
     <Description>A document file management library for .NET applications. Provides core functionality for managing documents, checklists, and file operations.</Description>
@@ -15,5 +15,10 @@
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <RepositoryUrl>https://github.com/KentaKatayama999/DocumentFileManager</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 </Project>
