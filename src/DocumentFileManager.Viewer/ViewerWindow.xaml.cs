@@ -195,10 +195,8 @@ public partial class ViewerWindow : Window
         else if (ShouldOpenWithDefault(extension))
         {
             System.Diagnostics.Debug.WriteLine("[ViewerWindow.LoadFile] ShouldOpenWithDefault分岐に入りました");
-            // ウィンドウを非表示にして最小化
-            WindowState = WindowState.Minimized;
-            ShowInTaskbar = false;
-            Opacity = 0;
+            // ウィンドウを完全に非表示
+            Hide();
 
             // 先にファイルオープン完了イベントを発生（ChecklistWindowをすぐに開く）
             // ViewerWindow自体のハンドルを渡す（外部プログラムのハンドル取得は非同期で行う）
@@ -615,4 +613,29 @@ public partial class ViewerWindow : Window
         var hwndSource = PresentationSource.FromVisual(this) as HwndSource;
         return hwndSource?.Handle ?? IntPtr.Zero;
     }
+
+    /// <summary>
+    /// ウィンドウの位置とサイズを設定（外部からの呼び出し用）
+    /// 移動ブロックを一時的に解除して設定
+    /// </summary>
+    public void SetPositionAndSize(double left, double top, double width, double height)
+    {
+        _isAdjustingPosition = true;
+        try
+        {
+            Left = left;
+            Top = top;
+            Width = width;
+            Height = height;
+        }
+        finally
+        {
+            _isAdjustingPosition = false;
+        }
+    }
+
+    /// <summary>
+    /// 外部プログラムのウィンドウハンドルを取得
+    /// </summary>
+    public IntPtr ExternalWindowHandle => _externalWindowHandle;
 }

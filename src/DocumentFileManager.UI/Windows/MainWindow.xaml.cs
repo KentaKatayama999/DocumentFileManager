@@ -24,6 +24,15 @@ namespace DocumentFileManager.UI.Windows;
 /// </summary>
 public partial class MainWindow : Window
 {
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    private const int SW_RESTORE = 9;
+    private const uint SWP_NOZORDER = 0x0004;
+
     private readonly IDocumentRepository _documentRepository;
     private readonly ICheckItemRepository _checkItemRepository;
     private readonly CheckItemUIBuilder _checkItemUIBuilder;
@@ -37,6 +46,7 @@ public partial class MainWindow : Window
     // チェックリストウィンドウ（シングルトン管理）
     private ChecklistWindow? _checklistWindow;
     private IntPtr _lastOpenedDocumentWindowHandle = IntPtr.Zero;
+    private DocumentFileManager.Viewer.ViewerWindow? _currentViewerWindow;
 
     // フィルタリングとハイライト用
     private List<Document> _allDocuments = new List<Document>();
@@ -713,6 +723,7 @@ public partial class MainWindow : Window
                 // ViewerWindowを同じプロセス内で開く
                 _logger.LogInformation("ViewerWindowで開きます: {FilePath}", absolutePath);
                 var viewerWindow = new DocumentFileManager.Viewer.ViewerWindow(absolutePath);
+                _currentViewerWindow = viewerWindow; // ViewerWindowの参照を保持
 
                 // 外部プログラムで開く場合は読み込み画面を表示
                 LoadingWindow? loadingWindow = null;
@@ -749,6 +760,9 @@ public partial class MainWindow : Window
                     if (windowHandle != IntPtr.Zero)
                     {
                         _lastOpenedDocumentWindowHandle = windowHandle;
+
+                        // 外部ウィンドウをプライマリモニターの左2/3に配置
+                        PositionExternalWindowOnPrimaryMonitor(windowHandle);
                     }
 
                     // ChecklistWindowを開く
@@ -823,6 +837,39 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// 外部ウィンドウをプライマリモニターの左2/3に配置
+    /// </summary>
+    private void PositionExternalWindowOnPrimaryMonitor(IntPtr windowHandle)
+    {
+        try
+        {
+            var workArea = SystemParameters.WorkArea;
+
+            // 左2/3の領域を計算
+            var viewerX = (int)workArea.Left;
+            var viewerY = (int)workArea.Top;
+            var viewerWidth = (int)(workArea.Width * 2.0 / 3.0);
+            var viewerHeight = (int)workArea.Height;
+
+            _logger.LogInformation("外部ウィンドウを配置: X={X}, Y={Y}, Width={Width}, Height={Height}",
+                viewerX, viewerY, viewerWidth, viewerHeight);
+
+            // 最大化を解除
+            ShowWindow(windowHandle, SW_RESTORE);
+
+            // 少し待機してから位置・サイズを設定
+            System.Threading.Thread.Sleep(100);
+
+            // 位置とサイズを設定
+            SetWindowPos(windowHandle, IntPtr.Zero, viewerX, viewerY, viewerWidth, viewerHeight, SWP_NOZORDER);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "外部ウィンドウの配置に失敗しました");
+        }
+    }
+
+    /// <summary>
     /// チェックリストウィンドウを開く
     /// </summary>
     private void OpenChecklistWindow(Document document, IntPtr documentWindowHandle = default)
@@ -846,7 +893,7 @@ public partial class MainWindow : Window
             var checklistSaver = _serviceProvider.GetRequiredService<Infrastructure.Services.ChecklistSaver>();
             var pathSettings = _serviceProvider.GetRequiredService<PathSettings>();
             var checklistLogger = _serviceProvider.GetRequiredService<ILogger<ChecklistWindow>>();
-            _checklistWindow = new ChecklistWindow(document, checkItemUIBuilder, checkItemDocumentRepository, checkItemRepository, checklistSaver, pathSettings, checklistLogger, _documentRootPath, documentWindowHandle)
+            _checklistWindow = new ChecklistWindow(document, checkItemUIBuilder, checkItemDocumentRepository, checkItemRepository, checklistSaver, pathSettings, checklistLogger, _documentRootPath, documentWindowHandle, _currentViewerWindow)
             {
                 Owner = null // Ownerを設定しない（MainWindowとの親子関係を切る）
             };
