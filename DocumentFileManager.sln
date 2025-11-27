@@ -17,6 +17,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DocumentFileManager.UI", "s
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DocumentFileManager.Viewer", "src\DocumentFileManager.Viewer\DocumentFileManager.Viewer.csproj", "{A6A197ED-5EDF-4D65-B76D-EF008316C074}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{5D20AA90-6969-D8BD-9DCD-8634F4692FDA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DocumentFileManager.Sample", "samples\DocumentFileManager.Sample\DocumentFileManager.Sample.csproj", "{855C9222-1FB0-4BE0-94BD-3CCE201DA714}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -87,6 +91,18 @@ Global
 		{A6A197ED-5EDF-4D65-B76D-EF008316C074}.Release|x64.Build.0 = Release|Any CPU
 		{A6A197ED-5EDF-4D65-B76D-EF008316C074}.Release|x86.ActiveCfg = Release|Any CPU
 		{A6A197ED-5EDF-4D65-B76D-EF008316C074}.Release|x86.Build.0 = Release|Any CPU
+		{855C9222-1FB0-4BE0-94BD-3CCE201DA714}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{855C9222-1FB0-4BE0-94BD-3CCE201DA714}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{855C9222-1FB0-4BE0-94BD-3CCE201DA714}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{855C9222-1FB0-4BE0-94BD-3CCE201DA714}.Debug|x64.Build.0 = Debug|Any CPU
+		{855C9222-1FB0-4BE0-94BD-3CCE201DA714}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{855C9222-1FB0-4BE0-94BD-3CCE201DA714}.Debug|x86.Build.0 = Debug|Any CPU
+		{855C9222-1FB0-4BE0-94BD-3CCE201DA714}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{855C9222-1FB0-4BE0-94BD-3CCE201DA714}.Release|Any CPU.Build.0 = Release|Any CPU
+		{855C9222-1FB0-4BE0-94BD-3CCE201DA714}.Release|x64.ActiveCfg = Release|Any CPU
+		{855C9222-1FB0-4BE0-94BD-3CCE201DA714}.Release|x64.Build.0 = Release|Any CPU
+		{855C9222-1FB0-4BE0-94BD-3CCE201DA714}.Release|x86.ActiveCfg = Release|Any CPU
+		{855C9222-1FB0-4BE0-94BD-3CCE201DA714}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -97,5 +113,6 @@ Global
 		{E8E0A929-675A-4089-8705-86E63647BE48} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{B2C0E038-3EC7-4F6A-B59C-0E55E6E9002C} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{A6A197ED-5EDF-4D65-B76D-EF008316C074} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{855C9222-1FB0-4BE0-94BD-3CCE201DA714} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
 	EndGlobalSection
 EndGlobal

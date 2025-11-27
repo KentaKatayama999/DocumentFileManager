@@ -1,0 +1,74 @@
+{
+  "checkItems": [
+    {
+      "label": "設計図面",
+      "type": "category",
+      "children": [
+        {
+          "label": "建築図面",
+          "type": "category",
+          "children": [
+            {
+              "label": "平面図",
+              "type": "item",
+              "checked": false
+            },
+            {
+              "label": "立面図",
+              "type": "item",
+              "checked": false
+            }
+          ]
+        },
+        {
+          "label": "設備図面",
+          "type": "category",
+          "children": [
+            {
+              "label": "電気設備図",
+              "type": "item",
+              "checked": false
+            },
+            {
+              "label": "空調設備図",
+              "type": "item",
+              "checked": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "仕様書",
+      "type": "category",
+      "children": [
+        {
+          "label": "建築仕様",
+          "type": "item",
+          "checked": false
+        },
+        {
+          "label": "設備仕様",
+          "type": "item",
+          "checked": false
+        }
+      ]
+    },
+    {
+      "label": "報告書",
+      "type": "category",
+      "children": [
+        {
+          "label": "進捗報告",
+          "type": "item",
+          "checked": true
+        },
+        {
+          "label": "検査報告",
+          "type": "item",
+          "checked": false
+        }
+      ]
+    }
+  ]
+}

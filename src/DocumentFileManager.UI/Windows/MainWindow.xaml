@@ -4,11 +4,15 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:DocumentFileManager.UI"
+        xmlns:converters="clr-namespace:DocumentFileManager.UI.Converters"
         mc:Ignorable="d"
         Title="資料保存アプリ - Document File Manager"
         Height="600" Width="900"
         MinHeight="400" MinWidth="600"
         WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <converters:FileExtensionToIconConverter x:Key="FileExtensionToIconConverter"/>
+    </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -83,9 +87,19 @@
                               SelectionChanged="DocumentsListView_SelectionChanged">
                         <ListView.View>
                             <GridView>
-                                <GridViewColumn Header="ファイル名" Width="180" DisplayMemberBinding="{Binding FileName}"/>
-                                <GridViewColumn Header="種類" Width="60" DisplayMemberBinding="{Binding FileType}"/>
-                                <GridViewColumn Header="相対パス" Width="250" DisplayMemberBinding="{Binding RelativePath}"/>
+                                <GridViewColumn Header="ファイル名" Width="280">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Image Source="{Binding FileType, Converter={StaticResource FileExtensionToIconConverter}}"
+                                                       Width="16" Height="16"
+                                                       Margin="0,0,5,0"
+                                                       VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding FileName}" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
                                 <GridViewColumn Header="追加日時" Width="140" DisplayMemberBinding="{Binding AddedAt, StringFormat={}{0:yyyy/MM/dd HH:mm}}"/>
                             </GridView>
                         </ListView.View>
