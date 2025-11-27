@@ -19,43 +19,52 @@
 
         <!-- ツールバー -->
         <Border Grid.Row="0" Background="#34495E" Padding="10">
-            <StackPanel Orientation="Horizontal">
-                <CheckBox x:Name="TopmostCheckBox"
-                          Content="常に手前に表示"
-                          Foreground="White"
-                          VerticalAlignment="Center"
-                          Margin="0,0,15,0"
-                          IsChecked="True"
-                          Checked="TopmostCheckBox_Checked"
-                          Unchecked="TopmostCheckBox_Unchecked"/>
-                <Button x:Name="DockLeftButton"
-                        Content="左に配置"
-                        Padding="10,5"
-                        Margin="0,0,5,0"
-                        Click="DockLeftButton_Click"/>
-                <Button x:Name="DockRightButton"
-                        Content="右に配置"
-                        Padding="10,5"
-                        Margin="0,0,5,0"
-                        Click="DockRightButton_Click"/>
-                <Button x:Name="CaptureButton"
-                        Content="📸 キャプチャ"
-                        Padding="10,5"
-                        Click="CaptureButton_Click"
-                        ToolTip="アクティブウィンドウをキャプチャして保存"/>
-                <Button x:Name="AddItemButton"
-                        Content="➕ 項目追加"
-                        Padding="10,5"
-                        Margin="5,0,0,0"
-                        Click="AddItemButton_Click"
-                        ToolTip="チェック項目を追加"/>
-                <Button x:Name="CreateNewChecklistButton"
-                        Content="📝 新規作成"
-                        Padding="10,5"
-                        Margin="5,0,0,0"
-                        Click="CreateNewChecklistButton_Click"
-                        ToolTip="新しいチェックリストファイルを作成"/>
-            </StackPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <CheckBox x:Name="TopmostCheckBox"
+                              Content="常に手前に表示"
+                              Foreground="White"
+                              VerticalAlignment="Center"
+                              Margin="0,0,15,0"
+                              IsChecked="True"
+                              Checked="TopmostCheckBox_Checked"
+                              Unchecked="TopmostCheckBox_Unchecked"/>
+                    <Button x:Name="DockLeftButton"
+                            Content="左に配置"
+                            Padding="10,5"
+                            Margin="0,0,5,0"
+                            Click="DockLeftButton_Click"/>
+                    <Button x:Name="DockRightButton"
+                            Content="右に配置"
+                            Padding="10,5"
+                            Margin="0,0,5,0"
+                            Click="DockRightButton_Click"/>
+                    <Button x:Name="AddItemButton"
+                            Content="&#x2795; 項目追加"
+                            Padding="10,5"
+                            Margin="5,0,0,0"
+                            Click="AddItemButton_Click"
+                            ToolTip="チェック項目を追加"/>
+                </StackPanel>
+
+                <!-- 閉じるボタン（右端に固定、他より大きく） -->
+                <Button x:Name="CloseButton"
+                        Grid.Column="1"
+                        Content="&#x2716; 閉じる"
+                        Padding="15,8"
+                        FontSize="14"
+                        FontWeight="SemiBold"
+                        Background="#E74C3C"
+                        Foreground="White"
+                        BorderThickness="0"
+                        Click="CloseButton_Click"
+                        ToolTip="チェックリストを閉じる"/>
+            </Grid>
         </Border>
 
         <!-- チェック項目表示エリア -->

@@ -579,6 +579,14 @@ public partial class ChecklistWindow : Window
     }
 
     /// <summary>
+    /// 閉じるボタンクリック
+    /// </summary>
+    private void CloseButton_Click(object sender, RoutedEventArgs e)
+    {
+        Close();
+    }
+
+    /// <summary>
     /// キャプチャ処理を実行
     /// </summary>
     private void PerformCapture()
