@@ -1,0 +1,121 @@
+{
+  "checkItems": [
+    {
+      "label": "空調設備",
+      "type": "category",
+      "children": [
+        {
+          "label": "室外機",
+          "type": "category",
+          "children": [
+            {
+              "label": "外観点検",
+              "type": "item",
+              "checked": false
+            },
+            {
+              "label": "冷媒配管確認",
+              "type": "item",
+              "checked": false
+            },
+            {
+              "label": "ドレン排水確認",
+              "type": "item",
+              "checked": true
+            }
+          ]
+        },
+        {
+          "label": "室内機",
+          "type": "category",
+          "children": [
+            {
+              "label": "フィルター清掃",
+              "type": "item",
+              "checked": false
+            },
+            {
+              "label": "風量確認",
+              "type": "item",
+              "checked": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "給排水設備",
+      "type": "category",
+      "children": [
+        {
+          "label": "給水ポンプ",
+          "type": "item",
+          "checked": false
+        },
+        {
+          "label": "排水ポンプ",
+          "type": "item",
+          "checked": false
+        },
+        {
+          "label": "受水槽",
+          "type": "item",
+          "checked": true
+        }
+      ]
+    },
+    {
+      "label": "電気設備",
+      "type": "category",
+      "children": [
+        {
+          "label": "分電盤",
+          "type": "category",
+          "children": [
+            {
+              "label": "ブレーカー点検",
+              "type": "item",
+              "checked": false
+            },
+            {
+              "label": "漏電確認",
+              "type": "item",
+              "checked": false
+            }
+          ]
+        },
+        {
+          "label": "照明器具",
+          "type": "item",
+          "checked": false
+        },
+        {
+          "label": "非常灯",
+          "type": "item",
+          "checked": false
+        }
+      ]
+    },
+    {
+      "label": "消防設備",
+      "type": "category",
+      "children": [
+        {
+          "label": "消火器",
+          "type": "item",
+          "checked": true
+        },
+        {
+          "label": "火災報知器",
+          "type": "item",
+          "checked": false
+        },
+        {
+          "label": "スプリンクラー",
+          "type": "item",
+          "checked": false
+        }
+      ]
+    }
+  ]
+}

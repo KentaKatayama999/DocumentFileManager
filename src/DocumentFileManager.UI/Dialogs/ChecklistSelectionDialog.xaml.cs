@@ -62,7 +62,7 @@ public partial class ChecklistSelectionDialog : Window
                 {
                     FilePath = file,
                     FileName = fileName,
-                    DisplayName = $"{displayName} ({fileName})"
+                    DisplayName = displayName
                 });
             }
         }
@@ -81,7 +81,7 @@ public partial class ChecklistSelectionDialog : Window
             {
                 FilePath = Path.Combine(_projectRoot, "checklist.json"),
                 FileName = "checklist.json",
-                DisplayName = "デフォルト (checklist.json)"
+                DisplayName = "デフォルト"
             });
         }
 

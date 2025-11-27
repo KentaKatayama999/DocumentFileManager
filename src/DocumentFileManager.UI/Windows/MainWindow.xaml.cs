@@ -221,6 +221,59 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// チェックリスト切替メニュークリック
+    /// </summary>
+    private async void SwitchChecklistMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _logger.LogInformation("チェックリスト切替ダイアログを開きます");
+
+            var projectRoot = GetProjectRoot();
+            var selectionDialog = new ChecklistSelectionDialog(projectRoot)
+            {
+                Owner = this
+            };
+
+            var dialogResult = selectionDialog.ShowDialog();
+
+            if (dialogResult == true && !string.IsNullOrEmpty(selectionDialog.SelectedChecklistFileName))
+            {
+                // 選択されたチェックリストファイル名をPathSettingsに設定
+                _pathSettings.SelectedChecklistFile = selectionDialog.SelectedChecklistFileName;
+                _logger.LogInformation("チェックリストを切り替えました: {FileName}", _pathSettings.SelectedChecklistFile);
+
+                // 設定を保存
+                var settingsPersistence = _serviceProvider.GetRequiredService<Services.SettingsPersistence>();
+                var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+                var appsettingsPath = Path.Combine(baseDirectory, "appsettings.json");
+                await settingsPersistence.SavePathSettingsAsync(_pathSettings, appsettingsPath);
+
+                // DBのチェック項目を新しいJSONファイルと同期
+                StatusText.Text = "チェックリストを同期中...";
+                var dbContext = _serviceProvider.GetRequiredService<Infrastructure.Data.DocumentManagerContext>();
+                var loggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
+                var seeder = new Infrastructure.Data.DataSeeder(dbContext, loggerFactory, projectRoot, _pathSettings.SelectedChecklistFile);
+                await seeder.SeedAsync();
+
+                // UIパネルをクリアして再描画
+                CheckItemsContainer.Children.Clear();
+                _checkItemUIElements.Clear();
+
+                // チェック項目を再読み込み
+                await LoadCheckItemsAsync();
+
+                StatusText.Text = $"チェックリストを切り替えました: {selectionDialog.SelectedChecklistFileName}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "チェックリスト切替に失敗しました");
+            MessageBox.Show($"チェックリスト切替に失敗しました:\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
     /// チェックリストエディターメニュークリック
     /// </summary>
     private void ChecklistEditorMenuItem_Click(object sender, RoutedEventArgs e)

@@ -32,6 +32,7 @@
             <MenuItem Header="設定(_S)">
                 <MenuItem Header="UI設定(_U)" Click="SettingsMenuItem_Click"/>
                 <Separator/>
+                <MenuItem Header="チェックリスト切替(_C)" Click="SwitchChecklistMenuItem_Click"/>
                 <MenuItem Header="チェックリストエディター(_E)" Click="ChecklistEditorMenuItem_Click"/>
                 <MenuItem Header="新規チェックリスト作成(_N)" Click="CreateNewChecklistMenuItem_Click"/>
             </MenuItem>
