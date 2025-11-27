@@ -20,9 +20,14 @@ public partial class ViewerWindow : Window
     private const int SWP_NOACTIVATE = 0x0010;
 
     /// <summary>
-    /// ファイルが開かれたときに発生するイベント
+    /// ファイルが開かれたときに発生するイベント（外部プログラムの場合は起動開始時）
     /// </summary>
     public event EventHandler<IntPtr>? FileOpened;
+
+    /// <summary>
+    /// 外部プログラムのウィンドウが準備完了したときに発生するイベント
+    /// </summary>
+    public event EventHandler<IntPtr>? ExternalWindowReady;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct WINDOWPOS
@@ -173,31 +178,41 @@ public partial class ViewerWindow : Window
     {
         var extension = Path.GetExtension(filePath).ToLower();
 
+        System.Diagnostics.Debug.WriteLine($"[ViewerWindow.LoadFile] 開始: extension={extension}, IsSupportedFile={IsSupportedFile(extension)}, ShouldOpenWithDefault={ShouldOpenWithDefault(extension)}");
+
         if (IsSupportedFile(extension))
         {
+            System.Diagnostics.Debug.WriteLine("[ViewerWindow.LoadFile] IsSupportedFile分岐に入りました");
             // Viewerで表示
             LoadInViewer(filePath, extension);
 
             // ViewerWindow自体のハンドルを使用
             var hwndSource = PresentationSource.FromVisual(this) as HwndSource;
             var handle = hwndSource?.Handle ?? IntPtr.Zero;
+            System.Diagnostics.Debug.WriteLine($"[ViewerWindow.LoadFile] FileOpenedイベント発火: handle={handle}");
             FileOpened?.Invoke(this, handle);
         }
         else if (ShouldOpenWithDefault(extension))
         {
-            // Windows標準プログラムで開く（Viewerウィンドウは最小化して保持）
-            _externalWindowHandle = await OpenWithDefaultProgram(filePath);
-
+            System.Diagnostics.Debug.WriteLine("[ViewerWindow.LoadFile] ShouldOpenWithDefault分岐に入りました");
             // ウィンドウを非表示にして最小化
             WindowState = WindowState.Minimized;
             ShowInTaskbar = false;
             Opacity = 0;
 
-            // ファイルオープン完了イベントを発生
-            FileOpened?.Invoke(this, _externalWindowHandle);
+            // 先にファイルオープン完了イベントを発生（ChecklistWindowをすぐに開く）
+            // ViewerWindow自体のハンドルを渡す（外部プログラムのハンドル取得は非同期で行う）
+            var hwndSource = PresentationSource.FromVisual(this) as HwndSource;
+            var viewerHandle = hwndSource?.Handle ?? IntPtr.Zero;
+            System.Diagnostics.Debug.WriteLine($"[ViewerWindow.LoadFile] FileOpenedイベント発火（外部プログラム）: handle={viewerHandle}");
+            FileOpened?.Invoke(this, viewerHandle);
+
+            // Windows標準プログラムで開く（ハンドル取得は非同期で行う）
+            _ = OpenWithDefaultProgramAsync(filePath);
         }
         else
         {
+            System.Diagnostics.Debug.WriteLine("[ViewerWindow.LoadFile] 未対応のファイル形式");
             // 未知のファイル形式
             MessageBox.Show($"未対応のファイル形式です: {extension}", "エラー",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -298,6 +313,14 @@ public partial class ViewerWindow : Window
     }
 
     /// <summary>
+    /// Windows標準プログラムで開く（非同期ラッパー、fire-and-forget用）
+    /// </summary>
+    private async Task OpenWithDefaultProgramAsync(string filePath)
+    {
+        _externalWindowHandle = await OpenWithDefaultProgram(filePath);
+    }
+
+    /// <summary>
     /// Windows標準プログラムで開く（ウィンドウハンドルを取得）
     /// </summary>
     private async Task<IntPtr> OpenWithDefaultProgram(string filePath)
@@ -362,6 +385,8 @@ public partial class ViewerWindow : Window
                             {
                                 var windowTitle = proc.MainWindowTitle;
 
+                                System.Diagnostics.Debug.WriteLine($"[ViewerWindow] 検出: Process={proc.ProcessName}, Title=\"{windowTitle}\", 探しているファイル=\"{fileNameWithoutExt}\"");
+
                                 // ウィンドウタイトルにファイル名が含まれているかチェック
                                 if (!string.IsNullOrEmpty(windowTitle) &&
                                     windowTitle.Contains(fileNameWithoutExt))
@@ -372,10 +397,16 @@ public partial class ViewerWindow : Window
                                     lastWindowTitle = windowTitle;
                                     var elapsedSeconds = (DateTime.Now - startTime).TotalSeconds;
 
+                                    System.Diagnostics.Debug.WriteLine($"[ViewerWindow] マッチ成功！経過時間={elapsedSeconds:F1}秒");
+
                                     // ウィンドウを画面左2/3に配置・リサイズ
                                     PositionExternalWindow(handle);
 
                                     _externalWindowHandle = handle;
+
+                                    // UIスレッドでExternalWindowReadyイベントを発火
+                                    Dispatcher.Invoke(() => ExternalWindowReady?.Invoke(this, handle));
+
                                     return handle;
                                 }
 
@@ -399,17 +430,10 @@ public partial class ViewerWindow : Window
 
             // タイムアウト
             var totalElapsed = (DateTime.Now - startTime).TotalSeconds;
-            MessageBox.Show(
-                $"ウィンドウハンドルの取得に失敗しました\n\n" +
-                $"経過時間: {totalElapsed:F1}秒\n" +
-                $"最大待機時間: {maxWaitSeconds}秒\n" +
-                $"探していたファイル名: {fileNameWithoutExt}\n" +
-                $"検索したプロセス: {string.Join(", ", targetProcessNames)}\n" +
-                $"最後に検出したウィンドウタイトル: {lastWindowTitle ?? "(なし)"}\n\n" +
-                $"ドキュメントウィンドウが表示されていない可能性があります。",
-                "タイムアウト",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
+            System.Diagnostics.Debug.WriteLine($"[ViewerWindow] タイムアウト: 経過時間={totalElapsed:F1}秒");
+
+            // タイムアウトでもExternalWindowReadyイベントを発火（ハンドルはゼロ）
+            Dispatcher.Invoke(() => ExternalWindowReady?.Invoke(this, IntPtr.Zero));
 
             return IntPtr.Zero;
         }

@@ -50,7 +50,17 @@ public class DocumentFileManagerHost : IDisposable
         host.InitializeDatabaseAsync().Wait();
 
         var mainWindow = host.CreateMainWindow();
-        mainWindow.ShowDialog(); // モーダル表示
+
+        // Closedイベントでのみ終了するようにする（Hide時に終了しないように）
+        var closed = false;
+        mainWindow.Closed += (s, e) => closed = true;
+
+        mainWindow.Show();
+
+        // メッセージループを手動で回す（MainWindowが閉じられるまで）
+        var frame = new System.Windows.Threading.DispatcherFrame();
+        mainWindow.Closed += (s, e) => frame.Continue = false;
+        System.Windows.Threading.Dispatcher.PushFrame(frame);
 
         host.Dispose();
     }

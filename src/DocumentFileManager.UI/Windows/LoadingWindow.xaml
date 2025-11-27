@@ -1,0 +1,62 @@
+<Window x:Class="DocumentFileManager.UI.Windows.LoadingWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="読み込み中"
+        Height="150" Width="350"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        WindowStartupLocation="CenterScreen"
+        Topmost="True"
+        ShowInTaskbar="False">
+    <Border Background="#F5F5F5"
+            BorderBrush="#CCCCCC"
+            BorderThickness="1"
+            CornerRadius="8"
+            Margin="10">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="10" ShadowDepth="3" Opacity="0.3"/>
+        </Border.Effect>
+        <Grid Margin="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- アイコンとテキスト -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center">
+                <TextBlock x:Name="IconText"
+                           Text="&#xE8E5;"
+                           FontFamily="Segoe MDL2 Assets"
+                           FontSize="24"
+                           VerticalAlignment="Center"
+                           Foreground="#0078D4"
+                           Margin="0,0,10,0"/>
+                <TextBlock x:Name="TitleText"
+                           Text="アプリケーションを起動しています..."
+                           FontSize="14"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- ファイル名 -->
+            <TextBlock x:Name="FileNameText"
+                       Grid.Row="1"
+                       Text=""
+                       FontSize="12"
+                       Foreground="#666666"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"
+                       MaxWidth="280"/>
+
+            <!-- プログレスバー -->
+            <ProgressBar Grid.Row="2"
+                         IsIndeterminate="True"
+                         Height="4"
+                         Background="#E0E0E0"
+                         Foreground="#0078D4"/>
+        </Grid>
+    </Border>
+</Window>

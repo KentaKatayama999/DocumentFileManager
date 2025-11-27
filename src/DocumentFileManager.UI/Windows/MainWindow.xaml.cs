@@ -714,16 +714,47 @@ public partial class MainWindow : Window
                 _logger.LogInformation("ViewerWindowで開きます: {FilePath}", absolutePath);
                 var viewerWindow = new DocumentFileManager.Viewer.ViewerWindow(absolutePath);
 
+                // 外部プログラムで開く場合は読み込み画面を表示
+                LoadingWindow? loadingWindow = null;
+                if (IsExternalProgramFile(extension))
+                {
+                    loadingWindow = new LoadingWindow();
+                    loadingWindow.SetFileName(document.FileName);
+                    loadingWindow.SetApplicationName(GetApplicationName(extension));
+                    loadingWindow.Show();
+                }
+
                 // ファイルオープン完了イベントを購読
                 viewerWindow.FileOpened += (sender, windowHandle) =>
                 {
                     _lastOpenedDocumentWindowHandle = windowHandle;
                     _logger.LogInformation("資料ウィンドウハンドルを取得: {Handle}", windowHandle);
 
-                    // サポート対象ファイルの場合のみChecklistWindowを開く
-                    if (IsSupportedByViewer(extension))
+                    // 内部Viewerで表示する場合はすぐにChecklistWindowを開く
+                    if (IsSupportedByViewer(extension) && !IsExternalProgramFile(extension))
                     {
                         OpenChecklistWindow(document, windowHandle);
+                    }
+                };
+
+                // 外部プログラムのウィンドウ準備完了イベントを購読
+                viewerWindow.ExternalWindowReady += (sender, windowHandle) =>
+                {
+                    _logger.LogInformation("外部プログラムのウィンドウ準備完了: {Handle}", windowHandle);
+
+                    // 読み込み画面を閉じる
+                    loadingWindow?.Close();
+
+                    // 外部プログラムのウィンドウハンドルを更新
+                    if (windowHandle != IntPtr.Zero)
+                    {
+                        _lastOpenedDocumentWindowHandle = windowHandle;
+                    }
+
+                    // ChecklistWindowを開く
+                    if (IsSupportedByViewer(extension))
+                    {
+                        OpenChecklistWindow(document, _lastOpenedDocumentWindowHandle);
                     }
                 };
 
@@ -752,10 +783,43 @@ public partial class MainWindow : Window
             // Windows標準プログラムで開く（ChecklistWindow連携）
             ".pdf",                           // PDF
             ".msg", ".eml",                   // Email
-            ".docx", ".doc", ".xlsx", ".xls", ".pptx", ".ppt",  // Office
-            ".3dm", ".sldprt", ".sldasm", ".dwg"  // CAD
+            ".docx", ".doc", ".xlsx", ".xls", ".xlsm", ".xlm", ".pptx", ".ppt",  // Office
+            ".3dm", ".sldprt", ".sldasm", ".dwg", ".igs", ".iges"  // CAD
         };
         return supportedExtensions.Contains(extension);
+    }
+
+    /// <summary>
+    /// 外部プログラムで開くファイル形式かどうかを判定
+    /// </summary>
+    private bool IsExternalProgramFile(string extension)
+    {
+        var externalExtensions = new[]
+        {
+            ".msg", ".eml",                   // Email
+            ".docx", ".doc", ".xlsx", ".xls", ".xlsm", ".xlm", ".pptx", ".ppt",  // Office
+            ".3dm", ".sldprt", ".sldasm", ".dwg", ".igs", ".iges"  // CAD
+        };
+        return externalExtensions.Contains(extension);
+    }
+
+    /// <summary>
+    /// 拡張子からアプリケーション名を取得
+    /// </summary>
+    private string GetApplicationName(string extension)
+    {
+        return extension switch
+        {
+            ".docx" or ".doc" => "Microsoft Word",
+            ".xlsx" or ".xls" or ".xlsm" or ".xlm" => "Microsoft Excel",
+            ".pptx" or ".ppt" => "Microsoft PowerPoint",
+            ".msg" or ".eml" => "Microsoft Outlook",
+            ".3dm" => "Rhino",
+            ".sldprt" or ".sldasm" => "SOLIDWORKS",
+            ".dwg" => "AutoCAD",
+            ".igs" or ".iges" => "CADアプリケーション",
+            _ => "外部アプリケーション"
+        };
     }
 
     /// <summary>

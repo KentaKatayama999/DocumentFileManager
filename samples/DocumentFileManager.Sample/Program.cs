@@ -15,6 +15,9 @@ public class Program
         // WPF Application を作成
         var app = new Application();
 
+        // ShutdownModeを明示的に設定（MainWindowが閉じられるまでアプリを終了しない）
+        app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
         // ProjectRoot フォルダのパスを取得（実行ファイルと同じ階層）
         var baseDir = AppDomain.CurrentDomain.BaseDirectory;
         var projectRoot = Path.Combine(baseDir, "ProjectRoot");
@@ -27,5 +30,8 @@ public class Program
 
         // MainWindow を表示
         DocumentFileManagerHost.ShowMainWindow(projectRoot);
+
+        // アプリケーションを明示的に終了
+        app.Shutdown();
     }
 }
