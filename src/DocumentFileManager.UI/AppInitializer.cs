@@ -5,6 +5,7 @@ using DocumentFileManager.Infrastructure.Repositories;
 using DocumentFileManager.UI.Configuration;
 using DocumentFileManager.UI.Helpers;
 using DocumentFileManager.UI.Services;
+using DocumentFileManager.UI.Services.Abstractions;
 using DocumentFileManager.UI.Windows;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -88,6 +89,7 @@ public static class AppInitializer
                 services.AddScoped<ICheckItemDocumentRepository, CheckItemDocumentRepository>();
 
                 // サービスの登録
+                services.AddSingleton<IDialogService, WpfDialogService>();
                 services.AddScoped<IDataIntegrityService, DataIntegrityService>();
                 services.AddSingleton<SettingsPersistence>();
                 services.AddScoped<Infrastructure.Services.ChecklistLoader>();
