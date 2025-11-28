@@ -1069,9 +1069,10 @@ public partial class ChecklistWindow : Window
                         {
                             _logger.LogInformation("キャプチャ画像を保存: {Path}", relativePath);
 
-                            // ViewModelを更新
+                            // ViewModelを更新（バインディングでUIが自動更新される）
                             viewModel.CaptureFilePath = relativePath;
                             viewModel.IsChecked = true;
+                            viewModel.UpdateCaptureButton(); // CameraButtonVisibilityを更新
 
                             // DBを更新
                             var linkedItem = await _checkItemDocumentRepository.GetByDocumentAndCheckItemAsync(
@@ -1101,21 +1102,9 @@ public partial class ChecklistWindow : Window
                                     _document.Id, viewModel.Entity.Id, relativePath);
                             }
 
-                            // UIを更新（チェックボックスとカメラアイコン）
-                            if (checkBoxContainer is StackPanel stackPanel)
-                            {
-                                // StackPanelの1番目がCheckBox、2番目がButton（📷）
-                                if (stackPanel.Children.Count >= 1 && stackPanel.Children[0] is CheckBox checkBox)
-                                {
-                                    checkBox.IsChecked = true;
-                                    _logger.LogInformation("チェックボックスをオン");
-                                }
-                                if (stackPanel.Children.Count >= 2 && stackPanel.Children[1] is Button imageButton)
-                                {
-                                    imageButton.Visibility = Visibility.Visible;
-                                    _logger.LogInformation("画像確認ボタンを表示");
-                                }
-                            }
+                            // Phase 6: UIの直接更新コードを削除
+                            // ViewModelのバインディングでUI（CheckBox, Button）が自動更新される
+                            _logger.LogInformation("キャプチャ保存完了（バインディングでUI自動更新）");
                         }
                     }
                 }

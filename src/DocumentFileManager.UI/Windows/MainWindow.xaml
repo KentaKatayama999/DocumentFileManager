@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:DocumentFileManager.UI"
         xmlns:converters="clr-namespace:DocumentFileManager.UI.Converters"
+        xmlns:vm="clr-namespace:DocumentFileManager.UI.ViewModels"
         mc:Ignorable="d"
         Title="資料保存アプリ - Document File Manager"
         Height="600" Width="900"
@@ -12,6 +13,54 @@
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <converters:FileExtensionToIconConverter x:Key="FileExtensionToIconConverter"/>
+
+        <!-- CheckBoxのスタイル（MainWindow用：読み取り専用表示） -->
+        <Style x:Key="CheckItemCheckBoxStyle" TargetType="CheckBox">
+            <Setter Property="Margin" Value="0,0,5,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+
+        <!-- カメラボタンのスタイル -->
+        <Style x:Key="CameraButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="20" />
+            <Setter Property="Margin" Value="5,0,0,0" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="ToolTip" Value="キャプチャ画像を表示" />
+            <Setter Property="Background">
+                <Setter.Value>
+                    <SolidColorBrush Color="#FFDCDC" />
+                </Setter.Value>
+            </Setter>
+            <Setter Property="BorderBrush">
+                <Setter.Value>
+                    <SolidColorBrush Color="#C8A0A0" />
+                </Setter.Value>
+            </Setter>
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Padding" Value="1" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+        </Style>
+
+        <!-- CheckItemのDataTemplate（Phase 5: XAML定義） -->
+        <DataTemplate x:Key="CheckItemTemplate" DataType="{x:Type vm:CheckItemViewModel}">
+            <StackPanel Orientation="Horizontal" Margin="2">
+                <!-- チェックボックス -->
+                <CheckBox Content="{Binding Label}"
+                          IsChecked="{Binding IsChecked, Mode=TwoWay}"
+                          IsEnabled="{Binding IsCheckBoxEnabled}"
+                          Style="{StaticResource CheckItemCheckBoxStyle}" />
+
+                <!-- カメラボタン -->
+                <Button Content="📷"
+                        Visibility="{Binding CameraButtonVisibility}"
+                        Command="{Binding ViewCaptureCommand}"
+                        Style="{StaticResource CameraButtonStyle}" />
+            </StackPanel>
+        </DataTemplate>
     </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>

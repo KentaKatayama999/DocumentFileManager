@@ -16,13 +16,13 @@ CheckItemUIBuilderの単一責任原則違反を解消し、MVVMパターンに�
 
 | ステータス | 件数 | 割合 |
 |-----------|------|------|
-| Open | 5 | 45% |
+| Open | 3 | 27% |
 | In Progress | 0 | 0% |
 | Review | 0 | 0% |
-| Done | 6 | 55% |
+| Done | 8 | 73% |
 | Blocked | 0 | 0% |
 
-**進捗率**: 55% (6/11)
+**進捗率**: 73% (8/11)
 
 ## チケット一覧
 
@@ -72,7 +72,7 @@ CheckItemUIBuilderの単一責任原則違反を解消し、MVVMパターンに�
 
 | 番号 | タイトル | 優先度 | 見積 | ステータス | 依存 |
 |------|----------|--------|------|-----------|------|
-| [#007](007-checkitemcontrol-datatemplate.md) | CheckItemControl（DataTemplate）作成 | Medium | 2h | Open | #006 |
+| [#007](007-checkitemcontrol-datatemplate.md) | CheckItemControl（DataTemplate）作成 | Medium | 2h | Done | #006 |
 
 **Phase 5見積**: 2時間
 
@@ -82,7 +82,7 @@ CheckItemUIBuilderの単一責任原則違反を解消し、MVVMパターンに�
 
 | 番号 | タイトル | 優先度 | 見積 | ステータス | 依存 |
 |------|----------|--------|------|-----------|------|
-| [#008](008-checklistwindow-modification.md) | ChecklistWindow修正 | High | 2h | Open | #007 |
+| [#008](008-checklistwindow-modification.md) | ChecklistWindow修正 | High | 2h | Done | #007 |
 
 **Phase 6見積**: 2時間
 
@@ -248,3 +248,5 @@ CheckItemUIBuilderの単一責任原則違反を解消し、MVVMパターンに�
 | 2025-11-28 | Claude Agent | チケット#004完了（CheckItemViewModelテストケース作成） |
 | 2025-11-28 | Claude Agent | チケット#005完了（CheckItemViewModel拡張） |
 | 2025-11-28 | Claude Agent | チケット#006完了（CheckItemUIBuilderリファクタリング） |
+| 2025-11-28 | Claude Agent | チケット#007完了（DataTemplate定義） |
+| 2025-11-28 | Claude Agent | チケット#008完了（ChecklistWindow修正） |
