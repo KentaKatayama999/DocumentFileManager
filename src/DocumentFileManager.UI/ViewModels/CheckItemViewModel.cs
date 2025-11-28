@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
+using System.Windows;
 using DocumentFileManager.Entities;
 using DocumentFileManager.ValueObjects;
 
@@ -58,6 +60,7 @@ public class CheckItemViewModel : INotifyPropertyChanged
                 _captureFilePath = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(HasCapture));
+                OnPropertyChanged(nameof(CameraButtonVisibility));
             }
         }
     }
@@ -74,9 +77,66 @@ public class CheckItemViewModel : INotifyPropertyChanged
     /// <summary>チェック項目かどうか（子要素を持たない）</summary>
     public bool IsItem => Children.Count == 0;
 
+    #region Phase 3拡張プロパティ
+
+    /// <summary>ドキュメントルートパス</summary>
+    public string DocumentRootPath { get; }
+
+    /// <summary>MainWindowモードかどうか</summary>
+    public bool IsMainWindow { get; }
+
+    /// <summary>チェックボックスが有効かどうか（MainWindowモードでは無効）</summary>
+    public bool IsCheckBoxEnabled => !IsMainWindow;
+
+    /// <summary>カメラボタンの表示状態</summary>
+    public Visibility CameraButtonVisibility
+    {
+        get
+        {
+            if (!HasCapture)
+                return Visibility.Collapsed;
+
+            var absolutePath = GetCaptureAbsolutePath();
+            if (absolutePath == null || !File.Exists(absolutePath))
+                return Visibility.Collapsed;
+
+            return Visibility.Visible;
+        }
+    }
+
+    /// <summary>
+    /// キャプチャの絶対パスを取得
+    /// </summary>
+    /// <returns>絶対パス（CaptureFilePathがnullの場合はnull）</returns>
+    public string? GetCaptureAbsolutePath()
+    {
+        if (string.IsNullOrEmpty(CaptureFilePath))
+            return null;
+
+        return System.IO.Path.Combine(DocumentRootPath, CaptureFilePath);
+    }
+
+    #endregion
+
+    /// <summary>
+    /// 既存のコンストラクタ（後方互換性のため維持）
+    /// </summary>
     public CheckItemViewModel(CheckItem entity)
+        : this(entity, string.Empty, false)
+    {
+    }
+
+    /// <summary>
+    /// 拡張コンストラクタ
+    /// </summary>
+    /// <param name="entity">チェック項目エンティティ</param>
+    /// <param name="documentRootPath">ドキュメントルートパス</param>
+    /// <param name="isMainWindow">MainWindowモードかどうか</param>
+    public CheckItemViewModel(CheckItem entity, string documentRootPath, bool isMainWindow)
     {
         Entity = entity;
+        DocumentRootPath = documentRootPath;
+        IsMainWindow = isMainWindow;
         Children = new ObservableCollection<CheckItemViewModel>();
 
         // 初期状態をエンティティから設定

@@ -1,3 +1,5 @@
+using System.IO;
+using System.Windows;
 using DocumentFileManager.Entities;
 using DocumentFileManager.UI.ViewModels;
 using DocumentFileManager.ValueObjects;
@@ -394,4 +396,184 @@ public class CheckItemViewModelTests
         Assert.True(listener1Fired);
         Assert.True(listener2Fired);
     }
+
+    #region IsCheckBoxEnabled テスト（Phase 3拡張）
+
+    /// <summary>
+    /// MainWindowモードではチェックボックスは無効（読み取り専用）
+    /// </summary>
+    [Fact]
+    public void IsCheckBoxEnabled_MainWindowモードでfalse()
+    {
+        // Arrange
+        var entity = new CheckItem { Path = "設計図面", Label = "設計図面" };
+
+        // Act
+        var viewModel = new CheckItemViewModel(entity, documentRootPath: "C:\\TestDocuments", isMainWindow: true);
+
+        // Assert
+        Assert.False(viewModel.IsCheckBoxEnabled);
+    }
+
+    /// <summary>
+    /// ChecklistWindowモードではチェックボックスは有効
+    /// </summary>
+    [Fact]
+    public void IsCheckBoxEnabled_ChecklistWindowモードでtrue()
+    {
+        // Arrange
+        var entity = new CheckItem { Path = "設計図面", Label = "設計図面" };
+
+        // Act
+        var viewModel = new CheckItemViewModel(entity, documentRootPath: "C:\\TestDocuments", isMainWindow: false);
+
+        // Assert
+        Assert.True(viewModel.IsCheckBoxEnabled);
+    }
+
+    #endregion
+
+    #region CameraButtonVisibility テスト（Phase 3拡張）
+
+    /// <summary>
+    /// キャプチャがなければカメラボタンは非表示
+    /// </summary>
+    [Fact]
+    public void CameraButtonVisibility_HasCapture_falseで非表示()
+    {
+        // Arrange
+        var entity = new CheckItem { Path = "設計図面", Label = "設計図面" };
+        var viewModel = new CheckItemViewModel(entity, documentRootPath: "C:\\TestDocuments", isMainWindow: false);
+        viewModel.CaptureFilePath = null;
+
+        // Act & Assert
+        Assert.Equal(Visibility.Collapsed, viewModel.CameraButtonVisibility);
+    }
+
+    /// <summary>
+    /// キャプチャファイルパスが設定されていてもファイルが存在しなければ非表示
+    /// </summary>
+    [Fact]
+    public void CameraButtonVisibility_ファイル存在しない場合は非表示()
+    {
+        // Arrange
+        var entity = new CheckItem { Path = "設計図面", Label = "設計図面" };
+        var viewModel = new CheckItemViewModel(entity, documentRootPath: "C:\\TestDocuments", isMainWindow: false);
+        viewModel.CaptureFilePath = "captures/nonexistent.png"; // 存在しないファイル
+
+        // Act & Assert
+        Assert.Equal(Visibility.Collapsed, viewModel.CameraButtonVisibility);
+    }
+
+    /// <summary>
+    /// キャプチャが存在する場合はカメラボタンを表示
+    /// </summary>
+    [Fact]
+    public void CameraButtonVisibility_HasCaptureとファイル存在で表示()
+    {
+        // Arrange
+        var tempDir = Path.Combine(Path.GetTempPath(), "CameraButtonVisibilityTest");
+        Directory.CreateDirectory(tempDir);
+        var tempFile = Path.Combine(tempDir, "test_capture.png");
+        File.WriteAllText(tempFile, "test");
+
+        try
+        {
+            var entity = new CheckItem { Path = "設計図面", Label = "設計図面" };
+            var viewModel = new CheckItemViewModel(entity, documentRootPath: tempDir, isMainWindow: false);
+            viewModel.CaptureFilePath = "test_capture.png";
+
+            // Act & Assert
+            Assert.Equal(Visibility.Visible, viewModel.CameraButtonVisibility);
+        }
+        finally
+        {
+            // Cleanup
+            if (File.Exists(tempFile)) File.Delete(tempFile);
+            if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
+        }
+    }
+
+    /// <summary>
+    /// CaptureFilePathの変更でCameraButtonVisibilityのPropertyChangedが発火
+    /// </summary>
+    [Fact]
+    public void CameraButtonVisibility_CaptureFilePath変更時にPropertyChanged発火()
+    {
+        // Arrange
+        var entity = new CheckItem { Path = "設計図面", Label = "設計図面" };
+        var viewModel = new CheckItemViewModel(entity, documentRootPath: "C:\\TestDocuments", isMainWindow: false);
+        var changedProperties = new List<string?>();
+
+        viewModel.PropertyChanged += (sender, e) => changedProperties.Add(e.PropertyName);
+
+        // Act
+        viewModel.CaptureFilePath = "captures/screenshot.png";
+
+        // Assert
+        Assert.Contains(nameof(viewModel.CameraButtonVisibility), changedProperties);
+    }
+
+    #endregion
+
+    #region DocumentRootPath テスト（Phase 3拡張）
+
+    /// <summary>
+    /// DocumentRootPathがコンストラクタで設定される
+    /// </summary>
+    [Fact]
+    public void DocumentRootPath_コンストラクタで設定される()
+    {
+        // Arrange
+        var entity = new CheckItem { Path = "設計図面", Label = "設計図面" };
+        var expectedPath = "C:\\TestDocuments";
+
+        // Act
+        var viewModel = new CheckItemViewModel(entity, documentRootPath: expectedPath, isMainWindow: false);
+
+        // Assert
+        Assert.Equal(expectedPath, viewModel.DocumentRootPath);
+    }
+
+    #endregion
+
+    #region GetCaptureAbsolutePath テスト（Phase 3拡張）
+
+    /// <summary>
+    /// キャプチャの絶対パスを取得
+    /// </summary>
+    [Fact]
+    public void GetCaptureAbsolutePath_相対パスから絶対パスを生成()
+    {
+        // Arrange
+        var entity = new CheckItem { Path = "設計図面", Label = "設計図面" };
+        var viewModel = new CheckItemViewModel(entity, documentRootPath: "C:\\TestDocuments", isMainWindow: false);
+        viewModel.CaptureFilePath = "captures\\screenshot.png";
+
+        // Act
+        var absolutePath = viewModel.GetCaptureAbsolutePath();
+
+        // Assert
+        Assert.Equal("C:\\TestDocuments\\captures\\screenshot.png", absolutePath);
+    }
+
+    /// <summary>
+    /// CaptureFilePathがnullの場合はnullを返す
+    /// </summary>
+    [Fact]
+    public void GetCaptureAbsolutePath_CaptureFilePathがnull_nullを返す()
+    {
+        // Arrange
+        var entity = new CheckItem { Path = "設計図面", Label = "設計図面" };
+        var viewModel = new CheckItemViewModel(entity, documentRootPath: "C:\\TestDocuments", isMainWindow: false);
+        viewModel.CaptureFilePath = null;
+
+        // Act
+        var absolutePath = viewModel.GetCaptureAbsolutePath();
+
+        // Assert
+        Assert.Null(absolutePath);
+    }
+
+    #endregion
 }
