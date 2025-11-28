@@ -90,6 +90,7 @@ public static class AppInitializer
 
                 // サービスの登録
                 services.AddSingleton<IDialogService, WpfDialogService>();
+                services.AddScoped<IChecklistStateManager, ChecklistStateManager>();
                 services.AddScoped<IDataIntegrityService, DataIntegrityService>();
                 services.AddSingleton<SettingsPersistence>();
                 services.AddScoped<Infrastructure.Services.ChecklistLoader>();
