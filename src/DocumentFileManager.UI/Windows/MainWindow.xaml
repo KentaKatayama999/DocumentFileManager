@@ -62,20 +62,26 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="5">
-                        <Button x:Name="AddDocumentButton"
-                                Content="資料追加"
-                                Padding="10,5"
-                                Margin="0,0,5,0"
-                                Click="AddDocumentButton_Click"/>
-                        <Button x:Name="ShowAllDocumentsButton"
-                                Content="すべて表示"
-                                Padding="10,5"
-                                Margin="0,0,5,0"
-                                Click="ShowAllDocumentsButton_Click"/>
-                        <TextBlock x:Name="DocumentCountText"
-                                   VerticalAlignment="Center"
-                                   Text="0 件"/>
+                    <StackPanel Grid.Row="0" Margin="5">
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="AddDocumentButton"
+                                    Content="資料追加"
+                                    Padding="10,5"
+                                    Margin="0,0,5,0"
+                                    Click="AddDocumentButton_Click"/>
+                            <Button x:Name="ShowAllDocumentsButton"
+                                    Content="すべて表示"
+                                    Padding="10,5"
+                                    Margin="0,0,5,0"
+                                    Click="ShowAllDocumentsButton_Click"/>
+                            <TextBlock x:Name="DocumentCountText"
+                                       VerticalAlignment="Center"
+                                       Text="0 件"/>
+                        </StackPanel>
+                        <TextBlock Text="※ 右クリックで「開く」「プログラムから開く」「削除」が選択できます"
+                                   Foreground="Gray"
+                                   FontSize="11"
+                                   Margin="0,5,0,0"/>
                     </StackPanel>
 
                     <ListView x:Name="DocumentsListView"
@@ -86,6 +92,14 @@
                               Drop="DocumentsListView_Drop"
                               MouseDoubleClick="DocumentsListView_MouseDoubleClick"
                               SelectionChanged="DocumentsListView_SelectionChanged">
+                        <ListView.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="開く(_O)" Click="OpenDocumentMenuItem_Click"/>
+                                <MenuItem Header="プログラムから開く(_P)..." Click="OpenWithMenuItem_Click"/>
+                                <Separator/>
+                                <MenuItem Header="削除(_D)" Click="DeleteDocumentMenuItem_Click"/>
+                            </ContextMenu>
+                        </ListView.ContextMenu>
                         <ListView.View>
                             <GridView>
                                 <GridViewColumn Header="ファイル名" Width="280">

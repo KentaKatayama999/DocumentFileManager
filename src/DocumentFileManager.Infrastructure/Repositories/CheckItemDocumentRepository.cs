@@ -60,6 +60,12 @@ public class CheckItemDocumentRepository : ICheckItemDocumentRepository
         await _context.CheckItemDocuments.AddAsync(checkItemDocument);
     }
 
+    public Task UpdateAsync(CheckItemDocument checkItemDocument)
+    {
+        _context.CheckItemDocuments.Update(checkItemDocument);
+        return Task.CompletedTask;
+    }
+
     public async Task DeleteAsync(int id)
     {
         var link = await _context.CheckItemDocuments.FindAsync(id);

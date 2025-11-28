@@ -25,6 +25,9 @@ public interface ICheckItemDocumentRepository
     /// <summary>紐づけを追加</summary>
     Task AddAsync(CheckItemDocument checkItemDocument);
 
+    /// <summary>紐づけを更新</summary>
+    Task UpdateAsync(CheckItemDocument checkItemDocument);
+
     /// <summary>紐づけを削除</summary>
     Task DeleteAsync(int id);
 

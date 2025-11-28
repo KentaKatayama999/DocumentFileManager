@@ -30,6 +30,29 @@ public partial class MainWindow : Window
     [DllImport("user32.dll")]
     private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    private static extern int SHOpenWithDialog(IntPtr hwndParent, ref OPENASINFO oainfo);
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct OPENASINFO
+    {
+        public string cszFile;
+        public string? cszClass;
+        public OPEN_AS_INFO_FLAGS oaifInFlags;
+    }
+
+    [Flags]
+    private enum OPEN_AS_INFO_FLAGS
+    {
+        OAIF_ALLOW_REGISTRATION = 0x00000001,
+        OAIF_REGISTER_EXT = 0x00000002,
+        OAIF_EXEC = 0x00000004,
+        OAIF_FORCE_REGISTRATION = 0x00000008,
+        OAIF_HIDE_REGISTRATION = 0x00000020,
+        OAIF_URL_PROTOCOL = 0x00000040,
+        OAIF_FILE_IS_URI = 0x00000080
+    }
+
     private const int SW_RESTORE = 9;
     private const uint SWP_NOZORDER = 0x0004;
 
@@ -79,7 +102,28 @@ public partial class MainWindow : Window
         // ウィンドウが読み込まれたときに自動読み込み
         Loaded += Window_Loaded;
 
+        // ウィンドウがアクティブになったときにチェック項目を再読み込み
+        Activated += Window_Activated;
+
         _logger.LogInformation("MainWindow が初期化されました");
+    }
+
+    private bool _isFirstActivation = true;
+
+    /// <summary>
+    /// ウィンドウがアクティブになったときの処理
+    /// </summary>
+    private async void Window_Activated(object? sender, EventArgs e)
+    {
+        // 初回アクティベーションはスキップ（Window_Loadedで読み込み済み）
+        if (_isFirstActivation)
+        {
+            _isFirstActivation = false;
+            return;
+        }
+
+        // チェック項目を再読み込み
+        await RefreshCheckItemsAsync();
     }
 
     /// <summary>
@@ -1021,6 +1065,34 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// チェック項目を再読み込み
+    /// </summary>
+    private async Task RefreshCheckItemsAsync()
+    {
+        try
+        {
+            _logger.LogInformation("チェック項目の再読み込みを開始します");
+            StatusText.Text = "チェック項目を再読み込み中...";
+
+            // UIパネルをクリア
+            CheckItemsContainer.Children.Clear();
+            _checkItemUIElements.Clear();
+
+            // チェック項目を再読み込み
+            await LoadCheckItemsAsync();
+
+            StatusText.Text = "チェック項目を再読み込みしました";
+            _logger.LogInformation("チェック項目の再読み込みが完了しました");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "チェック項目の再読み込みに失敗しました");
+            StatusText.Text = $"エラー: {ex.Message}";
+            MessageBox.Show($"チェック項目の再読み込みに失敗しました:\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
     /// 資料選択時のハイライト
     /// </summary>
     private async void DocumentsListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1131,6 +1203,117 @@ public partial class MainWindow : Window
                 continue;
             }
             stackPanel.Background = Brushes.Transparent;
+        }
+    }
+
+    #endregion
+
+    #region Context Menu Event Handlers
+
+    /// <summary>
+    /// コンテキストメニュー「開く」クリック
+    /// </summary>
+    private void OpenDocumentMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        // ダブルクリックと同じ処理を実行
+        DocumentsListView_MouseDoubleClick(sender, null!);
+    }
+
+    /// <summary>
+    /// コンテキストメニュー「プログラムから開く」クリック
+    /// </summary>
+    private void OpenWithMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (DocumentsListView.SelectedItem is not Document document)
+            {
+                return;
+            }
+
+            var projectRoot = GetProjectRoot();
+            var absolutePath = Path.Combine(projectRoot, document.RelativePath);
+
+            if (!File.Exists(absolutePath))
+            {
+                MessageBox.Show(
+                    $"ファイルが見つかりません:\n{absolutePath}",
+                    "エラー",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                return;
+            }
+
+            _logger.LogInformation("「プログラムから開く」ダイアログを表示: {FilePath}", absolutePath);
+
+            // SHOpenWithDialogを呼び出し
+            var openAsInfo = new OPENASINFO
+            {
+                cszFile = absolutePath,
+                cszClass = null,
+                oaifInFlags = OPEN_AS_INFO_FLAGS.OAIF_ALLOW_REGISTRATION | OPEN_AS_INFO_FLAGS.OAIF_EXEC
+            };
+
+            var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            int result = SHOpenWithDialog(hwnd, ref openAsInfo);
+
+            if (result != 0)
+            {
+                _logger.LogWarning("SHOpenWithDialog がキャンセルまたはエラー: 結果コード={Result}", result);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "「プログラムから開く」処理でエラーが発生しました");
+            MessageBox.Show(
+                $"エラーが発生しました:\n{ex.Message}",
+                "エラー",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
+    /// コンテキストメニュー「削除」クリック
+    /// </summary>
+    private async void DeleteDocumentMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (DocumentsListView.SelectedItem is not Document document)
+            {
+                return;
+            }
+
+            var result = MessageBox.Show(
+                $"資料「{document.FileName}」を削除しますか？\n\n※ファイル自体は削除されません。一覧から削除されるだけです。",
+                "削除確認",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            _logger.LogInformation("資料を削除: {FileName} (Id={Id})", document.FileName, document.Id);
+
+            await _documentRepository.DeleteAsync(document.Id);
+            await _documentRepository.SaveChangesAsync();
+
+            // 一覧を更新
+            await LoadDocumentsAsync();
+
+            StatusText.Text = $"資料「{document.FileName}」を削除しました";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "資料の削除に失敗しました");
+            MessageBox.Show(
+                $"削除に失敗しました:\n{ex.Message}",
+                "エラー",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
     }
 

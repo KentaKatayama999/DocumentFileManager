@@ -131,16 +131,18 @@ public class CheckItemUIBuilder
             {
                 if (_currentDocument != null)
                 {
-                    // ChecklistWindow（特定の資料）の場合：チェック状態とキャプチャを設定
-                    viewModel.IsChecked = true; // 紐づけが存在する場合はチェック済みとする
-                    viewModel.CaptureFilePath = linkedItem.CaptureFile; // キャプチャファイルパスを設定
-                    _logger.LogDebug("紐づけデータからチェック状態を設定: {Path} = チェック済み, Capture={CaptureFile}",
-                        item.Path, linkedItem.CaptureFile ?? "(なし)");
+                    // ChecklistWindow（特定の資料）の場合：
+                    // CaptureFileがある場合のみチェック済みとする（オフにしてもCaptureFileは維持される）
+                    var hasCaptureFile = !string.IsNullOrEmpty(linkedItem.CaptureFile);
+                    viewModel.IsChecked = hasCaptureFile;
+                    viewModel.CaptureFilePath = linkedItem.CaptureFile;
+                    _logger.LogDebug("紐づけデータからチェック状態を設定: {Path} = {IsChecked}, Capture={CaptureFile}",
+                        item.Path, hasCaptureFile ? "チェック済み" : "未チェック", linkedItem.CaptureFile ?? "(なし)");
                 }
                 else
                 {
                     // MainWindow（全体表示）の場合：最新のキャプチャのみ設定（チェック状態は設定しない）
-                    viewModel.CaptureFilePath = linkedItem.CaptureFile; // キャプチャファイルパスを設定
+                    viewModel.CaptureFilePath = linkedItem.CaptureFile;
                     _logger.LogDebug("最新キャプチャを設定: {Path}, Capture={CaptureFile}",
                         item.Path, linkedItem.CaptureFile ?? "(なし)");
                 }
@@ -283,13 +285,18 @@ public class CheckItemUIBuilder
         };
 
         // 画像確認ボタン（カメラ絵文字）
+        // キャプチャがあり、かつファイルが実際に存在する場合のみ表示
+        var captureFileExists = viewModel.HasCapture &&
+            !string.IsNullOrEmpty(viewModel.CaptureFilePath) &&
+            File.Exists(ResolveCaptureFilePath(viewModel.CaptureFilePath));
+
         var imageButton = new Button
         {
             Content = "📷",
             Width = 24,
             Height = 20,
             Margin = new Thickness(5, 0, 0, 0),
-            Visibility = viewModel.HasCapture ? Visibility.Visible : Visibility.Collapsed,
+            Visibility = captureFileExists ? Visibility.Visible : Visibility.Collapsed,
             Tag = viewModel, // ViewModelを保持
             FontSize = 11,
             Background = new SolidColorBrush(Color.FromRgb(255, 220, 220)), // 薄い赤
@@ -313,23 +320,26 @@ public class CheckItemUIBuilder
                 var viewer = new CaptureImageViewerWindow(absolutePath, null);
                 bool? result = viewer.ShowDialog();
 
-                // 削除された場合はボタンを非表示にする（ChecklistWindowからのみ削除可能）
-                if (viewer.IsDeleted && _currentDocument != null)
+                // 削除された場合はボタンを非表示にする
+                if (viewer.IsDeleted)
                 {
                     viewModel.CaptureFilePath = null;
                     imageButton.Visibility = Visibility.Collapsed;
 
                     // DBも更新（非同期処理を同期的に実行）
-                    Task.Run(async () =>
+                    if (_currentDocument != null)
                     {
-                        var linkedItem = await _checkItemDocumentRepository.GetByDocumentAndCheckItemAsync(
-                            _currentDocument.Id, viewModel.Entity.Id);
-                        if (linkedItem != null)
+                        Task.Run(async () =>
                         {
-                            await _checkItemDocumentRepository.UpdateCaptureFileAsync(linkedItem.Id, null);
-                            await _checkItemDocumentRepository.SaveChangesAsync();
-                        }
-                    }).Wait();
+                            var linkedItem = await _checkItemDocumentRepository.GetByDocumentAndCheckItemAsync(
+                                _currentDocument.Id, viewModel.Entity.Id);
+                            if (linkedItem != null)
+                            {
+                                await _checkItemDocumentRepository.UpdateCaptureFileAsync(linkedItem.Id, null);
+                                await _checkItemDocumentRepository.SaveChangesAsync();
+                            }
+                        }).Wait();
+                    }
                 }
             }
         };
@@ -343,14 +353,63 @@ public class CheckItemUIBuilder
         stackPanel.Children.Add(checkBox);
         stackPanel.Children.Add(imageButton);
 
-        // チェック状態変更イベント
+        // チェック状態変更イベント（ChecklistWindowのみ有効）
         checkBox.Checked += async (sender, e) =>
         {
+            // MainWindow（_currentDocument == null）ではチェック状態を元に戻して何もしない
+            if (_currentDocument == null)
+            {
+                checkBox.IsChecked = viewModel.IsChecked;
+                return;
+            }
+
+            // 既存の紐づき画像があるかチェック
+            var existingLink = await _checkItemDocumentRepository.GetByDocumentAndCheckItemAsync(
+                _currentDocument.Id, viewModel.Entity.Id);
+
+            if (existingLink != null && !string.IsNullOrEmpty(existingLink.CaptureFile))
+            {
+                // 既存の画像がある場合、復帰するか確認
+                var absolutePath = ResolveCaptureFilePath(existingLink.CaptureFile);
+                if (File.Exists(absolutePath))
+                {
+                    var restoreResult = MessageBox.Show(
+                        "以前保存したキャプチャ画像があります。復帰しますか？\n\n「いいえ」を選択すると破棄して新しく紐づけます。",
+                        "画像復帰確認",
+                        MessageBoxButton.YesNoCancel,
+                        MessageBoxImage.Question);
+
+                    if (restoreResult == MessageBoxResult.Cancel)
+                    {
+                        // キャンセル：チェックを元に戻す
+                        checkBox.IsChecked = false;
+                        return;
+                    }
+                    else if (restoreResult == MessageBoxResult.Yes)
+                    {
+                        // 復帰：既存の画像を使用
+                        viewModel.IsChecked = true;
+                        viewModel.CaptureFilePath = existingLink.CaptureFile;
+                        imageButton.Visibility = Visibility.Visible;
+                        // DBは既に紐づいているので更新不要
+                        _logger.LogInformation("既存のキャプチャ画像を復帰: {Path}", existingLink.CaptureFile);
+                        return;
+                    }
+                    // 「いいえ」の場合：既存のキャプチャを破棄して続行
+                    await _checkItemDocumentRepository.UpdateCaptureFileAsync(existingLink.Id, null);
+                    await _checkItemDocumentRepository.SaveChangesAsync();
+                    viewModel.CaptureFilePath = null;
+                    _logger.LogInformation("既存のキャプチャ画像を破棄: {Path}", existingLink.CaptureFile);
+                }
+            }
+
             viewModel.IsChecked = true;
+
+            // 紐づけを作成（キャプチャの有無に関わらず）
             await SaveStatusAsync(viewModel);
 
-            // Documentが指定されている場合、キャプチャを取得するか確認
-            if (_currentDocument != null && _onCaptureRequested != null)
+            // キャプチャを取得するか確認
+            if (_onCaptureRequested != null)
             {
                 var result = MessageBox.Show(
                     "この箇所のキャプチャを取得しますか？",
@@ -361,13 +420,28 @@ public class CheckItemUIBuilder
                 if (result == MessageBoxResult.Yes)
                 {
                     await _onCaptureRequested(viewModel, stackPanel);
+                    // UI更新は PerformCaptureForCheckItem 内で行われる
                 }
             }
+
+            // チェック状態を確実に反映（いいえを押した場合も含む）
+            checkBox.IsChecked = true;
         };
 
         checkBox.Unchecked += async (sender, e) =>
         {
+            // MainWindow（_currentDocument == null）ではチェック状態を元に戻して何もしない
+            if (_currentDocument == null)
+            {
+                checkBox.IsChecked = viewModel.IsChecked;
+                return;
+            }
+
             viewModel.IsChecked = false;
+
+            // カメラアイコンボタンを非表示にする
+            imageButton.Visibility = Visibility.Collapsed;
+
             await SaveStatusAsync(viewModel);
         };
 
@@ -396,13 +470,14 @@ public class CheckItemUIBuilder
                 // Documentが指定されている場合は、CheckItemDocumentテーブルに保存
                 if (viewModel.IsChecked)
                 {
-                    // チェックONの場合：CheckItemDocumentに追加（既に存在する場合は何もしない）
+                    // チェックONの場合：CheckItemDocumentに追加または更新
                     var existing = await _checkItemDocumentRepository.GetByDocumentAndCheckItemAsync(
                         _currentDocument.Id,
                         viewModel.Entity.Id);
 
                     if (existing == null)
                     {
+                        // 新規作成
                         var checkItemDocument = new CheckItemDocument
                         {
                             DocumentId = _currentDocument.Id,
@@ -416,22 +491,23 @@ public class CheckItemUIBuilder
                         _logger.LogInformation("チェック項目を資料に紐づけました: Document={DocumentId}, CheckItem={CheckItemId} ({Path})",
                             _currentDocument.Id, viewModel.Entity.Id, viewModel.Path);
                     }
+                    else
+                    {
+                        // 既存の紐づきがある場合は LinkedAt を更新（上書き）
+                        existing.LinkedAt = DateTime.UtcNow;
+                        await _checkItemDocumentRepository.UpdateAsync(existing);
+                        await _checkItemDocumentRepository.SaveChangesAsync();
+
+                        _logger.LogInformation("チェック項目の紐づけを更新しました: Document={DocumentId}, CheckItem={CheckItemId} ({Path})",
+                            _currentDocument.Id, viewModel.Entity.Id, viewModel.Path);
+                    }
                 }
                 else
                 {
-                    // チェックOFFの場合：CheckItemDocumentから削除
-                    var existing = await _checkItemDocumentRepository.GetByDocumentAndCheckItemAsync(
-                        _currentDocument.Id,
-                        viewModel.Entity.Id);
-
-                    if (existing != null)
-                    {
-                        await _checkItemDocumentRepository.DeleteAsync(existing.Id);
-                        await _checkItemDocumentRepository.SaveChangesAsync();
-
-                        _logger.LogInformation("チェック項目の紐づけを解除しました: Document={DocumentId}, CheckItem={CheckItemId} ({Path})",
-                            _currentDocument.Id, viewModel.Entity.Id, viewModel.Path);
-                    }
+                    // チェックOFFの場合：紐づきは削除せず維持する（再度オンにしたときに復帰できるように）
+                    // UIの表示状態のみ変更（カメラアイコンは非表示になる）
+                    _logger.LogInformation("チェック項目をオフにしました（紐づきは維持）: Document={DocumentId}, CheckItem={CheckItemId} ({Path})",
+                        _currentDocument.Id, viewModel.Entity.Id, viewModel.Path);
                 }
             }
         }

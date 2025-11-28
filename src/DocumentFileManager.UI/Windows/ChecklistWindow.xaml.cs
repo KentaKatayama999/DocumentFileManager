@@ -235,7 +235,28 @@ public partial class ChecklistWindow : Window
         // ウィンドウが閉じられたときに資料ウィンドウも閉じる
         Closed += ChecklistWindow_Closed;
 
+        // ウィンドウがアクティブになったときにチェック項目を再読み込み
+        Activated += ChecklistWindow_Activated;
+
         _logger.LogInformation("ChecklistWindow が初期化されました (Document: {FileName})", _document.FileName);
+    }
+
+    private bool _isFirstActivation = true;
+
+    /// <summary>
+    /// ウィンドウがアクティブになったときの処理
+    /// </summary>
+    private async void ChecklistWindow_Activated(object? sender, EventArgs e)
+    {
+        // 初回アクティベーションはスキップ（ChecklistWindow_Loadedで読み込み済み）
+        if (_isFirstActivation)
+        {
+            _isFirstActivation = false;
+            return;
+        }
+
+        // チェック項目を再読み込み
+        await RefreshCheckItemsAsync();
     }
 
     #endregion
@@ -652,6 +673,30 @@ public partial class ChecklistWindow : Window
     }
 
     /// <summary>
+    /// チェック項目を再読み込み
+    /// </summary>
+    private async Task RefreshCheckItemsAsync()
+    {
+        try
+        {
+            _logger.LogInformation("チェック項目の再読み込みを開始します (Document: {DocumentId})", _document.Id);
+
+            // UIパネルをクリア
+            CheckItemsContainer.Children.Clear();
+
+            // チェック項目を再読み込み
+            await _checkItemUIBuilder.BuildAsync(CheckItemsContainer, _document, PerformCaptureForCheckItem);
+
+            _logger.LogInformation("チェック項目の再読み込みが完了しました");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "チェック項目の再読み込みに失敗しました");
+            MessageBox.Show($"チェック項目の再読み込みに失敗しました:\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
     /// モニター移動ボタンクリック
     /// </summary>
     private async void MoveToNextMonitorButton_Click(object sender, RoutedEventArgs e)
@@ -1026,6 +1071,7 @@ public partial class ChecklistWindow : Window
 
                             // ViewModelを更新
                             viewModel.CaptureFilePath = relativePath;
+                            viewModel.IsChecked = true;
 
                             // DBを更新
                             var linkedItem = await _checkItemDocumentRepository.GetByDocumentAndCheckItemAsync(
@@ -1033,16 +1079,37 @@ public partial class ChecklistWindow : Window
 
                             if (linkedItem != null)
                             {
+                                // 既存の紐づきがある場合は更新
                                 await _checkItemDocumentRepository.UpdateCaptureFileAsync(linkedItem.Id, relativePath);
                                 await _checkItemDocumentRepository.SaveChangesAsync();
                                 _logger.LogInformation("DB更新完了: CheckItemDocument.Id={Id}, CaptureFile={Path}",
                                     linkedItem.Id, relativePath);
                             }
+                            else
+                            {
+                                // 紐づきがない場合は新規作成
+                                var newLink = new CheckItemDocument
+                                {
+                                    DocumentId = _document.Id,
+                                    CheckItemId = viewModel.Entity.Id,
+                                    LinkedAt = DateTime.UtcNow,
+                                    CaptureFile = relativePath
+                                };
+                                await _checkItemDocumentRepository.AddAsync(newLink);
+                                await _checkItemDocumentRepository.SaveChangesAsync();
+                                _logger.LogInformation("新規紐づけ作成: DocumentId={DocumentId}, CheckItemId={CheckItemId}, CaptureFile={Path}",
+                                    _document.Id, viewModel.Entity.Id, relativePath);
+                            }
 
-                            // UIを更新（🖼️ボタンを表示）
+                            // UIを更新（チェックボックスとカメラアイコン）
                             if (checkBoxContainer is StackPanel stackPanel)
                             {
-                                // StackPanelの2番目の子要素がButton（🖼️）
+                                // StackPanelの1番目がCheckBox、2番目がButton（📷）
+                                if (stackPanel.Children.Count >= 1 && stackPanel.Children[0] is CheckBox checkBox)
+                                {
+                                    checkBox.IsChecked = true;
+                                    _logger.LogInformation("チェックボックスをオン");
+                                }
                                 if (stackPanel.Children.Count >= 2 && stackPanel.Children[1] is Button imageButton)
                                 {
                                     imageButton.Visibility = Visibility.Visible;
