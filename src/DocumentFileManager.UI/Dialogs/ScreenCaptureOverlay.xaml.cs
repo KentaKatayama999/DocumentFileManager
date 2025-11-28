@@ -7,12 +7,13 @@ namespace DocumentFileManager.UI.Dialogs;
 
 /// <summary>
 /// 画面キャプチャの範囲選択オーバーレイ
+/// ViewerWindowの範囲に配置され、選択範囲をくり抜いて表示
 /// </summary>
 public partial class ScreenCaptureOverlay : Window
 {
     private Point _startPoint;
     private bool _isSelecting;
-    private Rect? _initialArea;
+    private readonly Rect? _targetArea;
 
     /// <summary>
     /// 選択された矩形領域（スクリーン座標）
@@ -22,37 +23,43 @@ public partial class ScreenCaptureOverlay : Window
     public ScreenCaptureOverlay()
     {
         InitializeComponent();
+        Loaded += OnLoaded;
     }
 
     /// <summary>
-    /// 初期選択範囲を指定するコンストラクタ
+    /// ターゲットウィンドウの範囲を指定するコンストラクタ
     /// </summary>
-    /// <param name="initialArea">初期選択範囲（スクリーン座標）</param>
-    public ScreenCaptureOverlay(Rect initialArea) : this()
+    /// <param name="targetArea">ターゲットウィンドウの範囲（スクリーン座標）</param>
+    public ScreenCaptureOverlay(Rect targetArea) : this()
     {
-        _initialArea = initialArea;
-        Loaded += ScreenCaptureOverlay_Loaded;
+        _targetArea = targetArea;
     }
 
-    /// <summary>
-    /// ウィンドウが読み込まれたときに初期選択範囲を表示
-    /// </summary>
-    private void ScreenCaptureOverlay_Loaded(object sender, RoutedEventArgs e)
+    private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        if (_initialArea.HasValue)
+        if (_targetArea.HasValue)
         {
-            // スクリーン座標をウィンドウ座標に変換
-            var topLeft = PointFromScreen(new Point(_initialArea.Value.Left, _initialArea.Value.Top));
-
-            SelectionRectangle.Visibility = Visibility.Visible;
-            Canvas.SetLeft(SelectionRectangle, topLeft.X);
-            Canvas.SetTop(SelectionRectangle, topLeft.Y);
-            SelectionRectangle.Width = _initialArea.Value.Width;
-            SelectionRectangle.Height = _initialArea.Value.Height;
-
-            // 初期選択範囲を設定
-            _startPoint = topLeft;
+            // オーバーレイウィンドウをターゲットウィンドウの位置・サイズに合わせる
+            Left = _targetArea.Value.Left;
+            Top = _targetArea.Value.Top;
+            Width = _targetArea.Value.Width;
+            Height = _targetArea.Value.Height;
         }
+        else
+        {
+            // ターゲットがない場合はプライマリスクリーン全体
+            var primaryScreen = System.Windows.Forms.Screen.PrimaryScreen;
+            if (primaryScreen != null)
+            {
+                Left = primaryScreen.Bounds.Left;
+                Top = primaryScreen.Bounds.Top;
+                Width = primaryScreen.Bounds.Width;
+                Height = primaryScreen.Bounds.Height;
+            }
+        }
+
+        // オーバーレイ全体のサイズをジオメトリに設定
+        FullAreaGeometry.Rect = new Rect(0, 0, Width, Height);
     }
 
     private void Window_MouseDown(object sender, MouseButtonEventArgs e)
@@ -62,11 +69,8 @@ public partial class ScreenCaptureOverlay : Window
             _isSelecting = true;
             _startPoint = e.GetPosition(this);
 
-            SelectionRectangle.Visibility = Visibility.Visible;
-            System.Windows.Controls.Canvas.SetLeft(SelectionRectangle, _startPoint.X);
-            System.Windows.Controls.Canvas.SetTop(SelectionRectangle, _startPoint.Y);
-            SelectionRectangle.Width = 0;
-            SelectionRectangle.Height = 0;
+            // 選択開始時は選択範囲を0にリセット
+            UpdateSelection(new Rect(_startPoint.X, _startPoint.Y, 0, 0));
         }
     }
 
@@ -76,15 +80,15 @@ public partial class ScreenCaptureOverlay : Window
         {
             var currentPoint = e.GetPosition(this);
 
+            // ウィンドウ範囲内にクランプ
+            currentPoint = ClampToWindow(currentPoint);
+
             var x = Math.Min(_startPoint.X, currentPoint.X);
             var y = Math.Min(_startPoint.Y, currentPoint.Y);
             var width = Math.Abs(currentPoint.X - _startPoint.X);
             var height = Math.Abs(currentPoint.Y - _startPoint.Y);
 
-            System.Windows.Controls.Canvas.SetLeft(SelectionRectangle, x);
-            System.Windows.Controls.Canvas.SetTop(SelectionRectangle, y);
-            SelectionRectangle.Width = width;
-            SelectionRectangle.Height = height;
+            UpdateSelection(new Rect(x, y, width, height));
         }
     }
 
@@ -95,6 +99,9 @@ public partial class ScreenCaptureOverlay : Window
             _isSelecting = false;
 
             var currentPoint = e.GetPosition(this);
+
+            // ウィンドウ範囲内にクランプ
+            currentPoint = ClampToWindow(currentPoint);
 
             // 選択範囲が小さすぎる場合はキャンセル
             var width = Math.Abs(currentPoint.X - _startPoint.X);
@@ -126,5 +133,31 @@ public partial class ScreenCaptureOverlay : Window
             DialogResult = false;
             Close();
         }
+    }
+
+    /// <summary>
+    /// 選択範囲を更新（くり抜き表示）
+    /// </summary>
+    private void UpdateSelection(Rect selectionRect)
+    {
+        // くり抜き用のジオメトリを更新
+        SelectionGeometry.Rect = selectionRect;
+
+        // 枠線を更新
+        SelectionBorder.Visibility = Visibility.Visible;
+        Canvas.SetLeft(SelectionBorder, selectionRect.X);
+        Canvas.SetTop(SelectionBorder, selectionRect.Y);
+        SelectionBorder.Width = Math.Max(0, selectionRect.Width);
+        SelectionBorder.Height = Math.Max(0, selectionRect.Height);
+    }
+
+    /// <summary>
+    /// 座標をウィンドウ範囲内にクランプ
+    /// </summary>
+    private Point ClampToWindow(Point point)
+    {
+        var x = Math.Max(0, Math.Min(Width, point.X));
+        var y = Math.Max(0, Math.Min(Height, point.Y));
+        return new Point(x, y);
     }
 }

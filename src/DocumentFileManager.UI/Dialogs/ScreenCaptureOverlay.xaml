@@ -4,19 +4,37 @@
         Title="範囲選択"
         WindowStyle="None"
         AllowsTransparency="True"
-        Background="#40000000"
-        WindowState="Maximized"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
         Topmost="True"
         Cursor="Cross"
         MouseDown="Window_MouseDown"
         MouseMove="Window_MouseMove"
         MouseUp="Window_MouseUp"
         KeyDown="Window_KeyDown">
-    <Canvas x:Name="SelectionCanvas">
-        <Rectangle x:Name="SelectionRectangle"
-                   Stroke="Red"
-                   StrokeThickness="2"
-                   Fill="#30FF0000"
-                   Visibility="Collapsed"/>
-    </Canvas>
+    <Grid x:Name="RootGrid">
+        <!-- オーバーレイマスク（選択範囲をくり抜く） -->
+        <Path x:Name="OverlayPath" Fill="#40FF0000">
+            <Path.Data>
+                <CombinedGeometry GeometryCombineMode="Exclude">
+                    <CombinedGeometry.Geometry1>
+                        <RectangleGeometry x:Name="FullAreaGeometry" Rect="0,0,100,100"/>
+                    </CombinedGeometry.Geometry1>
+                    <CombinedGeometry.Geometry2>
+                        <RectangleGeometry x:Name="SelectionGeometry" Rect="0,0,0,0"/>
+                    </CombinedGeometry.Geometry2>
+                </CombinedGeometry>
+            </Path.Data>
+        </Path>
+
+        <!-- 選択範囲の枠線 -->
+        <Canvas x:Name="SelectionCanvas">
+            <Rectangle x:Name="SelectionBorder"
+                       Stroke="Red"
+                       StrokeThickness="2"
+                       Fill="Transparent"
+                       Visibility="Collapsed"/>
+        </Canvas>
+    </Grid>
 </Window>
