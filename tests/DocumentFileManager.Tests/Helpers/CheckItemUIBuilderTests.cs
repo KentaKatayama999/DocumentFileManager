@@ -3,20 +3,24 @@ using DocumentFileManager.Infrastructure.Data;
 using DocumentFileManager.Infrastructure.Repositories;
 using DocumentFileManager.UI.Configuration;
 using DocumentFileManager.UI.Helpers;
+using DocumentFileManager.UI.Services.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using Xunit;
 
 namespace DocumentFileManager.Tests.Helpers;
 
 /// <summary>
 /// CheckItemUIBuilderのテスト（Issue #1: パス解決の統一）
+/// Phase 4: IChecklistStateManagerの追加
 /// </summary>
 public class CheckItemUIBuilderTests : IDisposable
 {
     private readonly DocumentManagerContext _context;
     private readonly CheckItemRepository _checkItemRepository;
     private readonly CheckItemDocumentRepository _checkItemDocumentRepository;
+    private readonly Mock<IChecklistStateManager> _mockStateManager;
     private readonly UISettings _uiSettings;
     private readonly string _testRootPath;
 
@@ -29,6 +33,7 @@ public class CheckItemUIBuilderTests : IDisposable
         _context = new DocumentManagerContext(options);
         _checkItemRepository = new CheckItemRepository(_context, NullLogger<CheckItemRepository>.Instance);
         _checkItemDocumentRepository = new CheckItemDocumentRepository(_context);
+        _mockStateManager = new Mock<IChecklistStateManager>();
         _uiSettings = new UISettings();
 
         // テスト用の一時ディレクトリを作成
@@ -53,6 +58,7 @@ public class CheckItemUIBuilderTests : IDisposable
         return new CheckItemUIBuilder(
             _checkItemRepository,
             _checkItemDocumentRepository,
+            _mockStateManager.Object,
             _uiSettings,
             NullLogger<CheckItemUIBuilder>.Instance,
             documentRootPath);

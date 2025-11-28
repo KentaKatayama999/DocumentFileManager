@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Input;
 using DocumentFileManager.Entities;
 using DocumentFileManager.ValueObjects;
 
@@ -114,6 +115,56 @@ public class CheckItemViewModel : INotifyPropertyChanged
             return null;
 
         return System.IO.Path.Combine(DocumentRootPath, CaptureFilePath);
+    }
+
+    #endregion
+
+    #region Phase 4拡張プロパティ（ICommand）
+
+    private ICommand? _checkedChangedCommand;
+    private ICommand? _viewCaptureCommand;
+
+    /// <summary>
+    /// チェック状態変更コマンド
+    /// 外部から設定される（CheckItemUIBuilderまたはChecklistWindow）
+    /// </summary>
+    public ICommand? CheckedChangedCommand
+    {
+        get => _checkedChangedCommand;
+        set
+        {
+            if (_checkedChangedCommand != value)
+            {
+                _checkedChangedCommand = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    /// <summary>
+    /// キャプチャ表示コマンド
+    /// 外部から設定される（CheckItemUIBuilderまたはChecklistWindow）
+    /// </summary>
+    public ICommand? ViewCaptureCommand
+    {
+        get => _viewCaptureCommand;
+        set
+        {
+            if (_viewCaptureCommand != value)
+            {
+                _viewCaptureCommand = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    /// <summary>
+    /// キャプチャボタンの表示状態を更新する
+    /// </summary>
+    public void UpdateCaptureButton()
+    {
+        OnPropertyChanged(nameof(HasCapture));
+        OnPropertyChanged(nameof(CameraButtonVisibility));
     }
 
     #endregion

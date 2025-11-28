@@ -3,10 +3,13 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Media;
+using CommunityToolkit.Mvvm.Input;
 using DocumentFileManager.Entities;
 using DocumentFileManager.Infrastructure.Repositories;
 using DocumentFileManager.UI.Configuration;
+using DocumentFileManager.UI.Services.Abstractions;
 using DocumentFileManager.UI.ViewModels;
 using DocumentFileManager.UI.Windows;
 using Microsoft.Extensions.Logging;
@@ -15,30 +18,38 @@ namespace DocumentFileManager.UI.Helpers;
 
 /// <summary>
 /// チェック項目のUI階層を動的に構築するヘルパークラス
+/// Phase 4でリファクタリング：責務をUI構築とバインディング設定のみに限定
 /// </summary>
 public class CheckItemUIBuilder
 {
     private readonly ICheckItemRepository _repository;
     private readonly ICheckItemDocumentRepository _checkItemDocumentRepository;
+    private readonly IChecklistStateManager _stateManager;
     private readonly UISettings _settings;
     private readonly ILogger<CheckItemUIBuilder> _logger;
     private readonly string _documentRootPath;
     private Document? _currentDocument;
     private Func<CheckItemViewModel, UIElement, Task>? _onCaptureRequested;
 
+    /// <summary>
+    /// コンストラクタ（Phase 4: ChecklistStateManagerを追加）
+    /// </summary>
     public CheckItemUIBuilder(
         ICheckItemRepository repository,
         ICheckItemDocumentRepository checkItemDocumentRepository,
+        IChecklistStateManager stateManager,
         UISettings settings,
         ILogger<CheckItemUIBuilder> logger,
         string documentRootPath)
     {
-        _repository = repository;
-        _checkItemDocumentRepository = checkItemDocumentRepository;
-        _settings = settings;
-        _logger = logger;
-        _documentRootPath = documentRootPath;
+        _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+        _checkItemDocumentRepository = checkItemDocumentRepository ?? throw new ArgumentNullException(nameof(checkItemDocumentRepository));
+        _stateManager = stateManager ?? throw new ArgumentNullException(nameof(stateManager));
+        _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _documentRootPath = documentRootPath ?? throw new ArgumentNullException(nameof(documentRootPath));
     }
+
 
     /// <summary>
     /// チェック項目の階層UIを構築する
@@ -115,16 +126,19 @@ public class CheckItemUIBuilder
 
     /// <summary>
     /// ViewModelの階層構造を構築する
+    /// Phase 4: 拡張コンストラクタを使用し、コマンドを設定
     /// </summary>
     private List<CheckItemViewModel> BuildViewModelHierarchy(
         List<Entities.CheckItem> items,
         Dictionary<int, CheckItemDocument>? checkItemDocuments)
     {
         var viewModels = new List<CheckItemViewModel>();
+        var isMainWindow = _currentDocument == null;
 
         foreach (var item in items)
         {
-            var viewModel = new CheckItemViewModel(item);
+            // Phase 4: 拡張コンストラクタを使用
+            var viewModel = new CheckItemViewModel(item, _documentRootPath, isMainWindow);
 
             // Documentと紐づいている場合は、紐づけデータからチェック状態を設定
             if (checkItemDocuments != null && checkItemDocuments.TryGetValue(item.Id, out var linkedItem))
@@ -148,6 +162,12 @@ public class CheckItemUIBuilder
                 }
             }
 
+            // Phase 4: コマンドを設定（ChecklistWindowの場合のみ）
+            if (_currentDocument != null && viewModel.IsItem)
+            {
+                SetupCommands(viewModel);
+            }
+
             // 子要素を再帰的に追加
             if (item.Children != null && item.Children.Count > 0)
             {
@@ -162,6 +182,115 @@ public class CheckItemUIBuilder
         }
 
         return viewModels;
+    }
+
+    /// <summary>
+    /// ViewModelにコマンドを設定する
+    /// Phase 4: ChecklistStateManagerを使用して状態遷移を管理
+    /// </summary>
+    private void SetupCommands(CheckItemViewModel viewModel)
+    {
+        // CheckedChangedCommand: チェック状態変更時の処理
+        // 注意: このコマンドはChecked/Uncheckedイベントから直接呼ばれるのではなく、
+        // IsCheckedのTwoWayバインディングによって状態が変わった後に明示的に実行される
+        viewModel.CheckedChangedCommand = new AsyncRelayCommand(async () =>
+        {
+            if (_currentDocument == null)
+            {
+                _logger.LogWarning("Documentがnullのためチェック状態変更をスキップします");
+                return;
+            }
+
+            try
+            {
+                if (viewModel.IsChecked)
+                {
+                    // チェックON処理
+                    var transition = await _stateManager.HandleCheckOnAsync(viewModel, _currentDocument);
+
+                    if (transition == null)
+                    {
+                        // キャンセルされた場合、チェック状態を戻す
+                        viewModel.IsChecked = false;
+                        _logger.LogInformation("チェックON操作がキャンセルされました");
+                        return;
+                    }
+
+                    // 状態遷移をコミット
+                    await _stateManager.CommitTransitionAsync(transition);
+
+                    // ViewModelの状態を更新
+                    viewModel.CaptureFilePath = transition.CaptureFile;
+                    viewModel.UpdateCaptureButton();
+
+                    // キャプチャ取得を促す（既存のキャプチャがない場合）
+                    if (_onCaptureRequested != null && string.IsNullOrEmpty(transition.CaptureFile))
+                    {
+                        // キャプチャ取得は呼び出し元（ChecklistWindow）で処理
+                        // ここではイベントを発火するのみ
+                        _logger.LogDebug("キャプチャ取得可能状態: CheckItemId={CheckItemId}", viewModel.Id);
+                    }
+                }
+                else
+                {
+                    // チェックOFF処理
+                    var transition = await _stateManager.HandleCheckOffAsync(viewModel, _currentDocument);
+
+                    // 状態遷移をコミット
+                    await _stateManager.CommitTransitionAsync(transition);
+
+                    // ViewModelの状態を更新
+                    viewModel.UpdateCaptureButton();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "チェック状態変更中にエラーが発生しました: CheckItemId={CheckItemId}", viewModel.Id);
+                // ロールバック: チェック状態を戻す
+                viewModel.IsChecked = !viewModel.IsChecked;
+                throw;
+            }
+        });
+
+        // ViewCaptureCommand: キャプチャ表示
+        viewModel.ViewCaptureCommand = new RelayCommand(() =>
+        {
+            var absolutePath = viewModel.GetCaptureAbsolutePath();
+            if (string.IsNullOrEmpty(absolutePath))
+            {
+                _logger.LogWarning("キャプチャファイルパスが未設定です");
+                return;
+            }
+
+            _logger.LogInformation("キャプチャ画像を表示: {Path}", absolutePath);
+
+            var viewer = new CaptureImageViewerWindow(absolutePath, null);
+            bool? result = viewer.ShowDialog();
+
+            // 削除された場合はViewModelを更新
+            if (viewer.IsDeleted)
+            {
+                viewModel.CaptureFilePath = null;
+                viewModel.UpdateCaptureButton();
+
+                // DB更新（非同期処理を同期的に実行）
+                if (_currentDocument != null)
+                {
+                    Task.Run(async () =>
+                    {
+                        var linkedItem = await _checkItemDocumentRepository.GetByDocumentAndCheckItemAsync(
+                            _currentDocument.Id, viewModel.Entity.Id);
+                        if (linkedItem != null)
+                        {
+                            await _checkItemDocumentRepository.UpdateCaptureFileAsync(linkedItem.Id, null);
+                            await _checkItemDocumentRepository.SaveChangesAsync();
+                        }
+                    }).Wait();
+                }
+
+                _logger.LogInformation("キャプチャ画像が削除されました");
+            }
+        });
     }
 
     /// <summary>
@@ -268,36 +397,45 @@ public class CheckItemUIBuilder
 
     /// <summary>
     /// CheckBoxと画像確認ボタンを含むStackPanelを作成する
+    /// Phase 4: イベントハンドラをバインディングに置き換え
     /// </summary>
     private UIElement CreateCheckBox(CheckItemViewModel viewModel, int depth)
     {
         var checkBox = new CheckBox
         {
             Content = viewModel.Label,
-            IsChecked = viewModel.IsChecked,
             Margin = new Thickness(
                 depth * _settings.CheckBox.MarginDepthMultiplier + _settings.CheckBox.MarginLeft,
                 _settings.CheckBox.MarginTop,
                 _settings.CheckBox.MarginRight,
                 _settings.CheckBox.MarginBottom),
             FontSize = _settings.CheckBox.FontSize,
-            Tag = viewModel // ViewModelを保持
+            DataContext = viewModel
         };
 
-        // 画像確認ボタン（カメラ絵文字）
-        // キャプチャがあり、かつファイルが実際に存在する場合のみ表示
-        var captureFileExists = viewModel.HasCapture &&
-            !string.IsNullOrEmpty(viewModel.CaptureFilePath) &&
-            File.Exists(ResolveCaptureFilePath(viewModel.CaptureFilePath));
+        // Phase 4: IsCheckedをTwoWayバインディング
+        var isCheckedBinding = new Binding(nameof(CheckItemViewModel.IsChecked))
+        {
+            Source = viewModel,
+            Mode = BindingMode.TwoWay,
+            UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
+        };
+        checkBox.SetBinding(CheckBox.IsCheckedProperty, isCheckedBinding);
 
+        // Phase 4: IsEnabledをバインディング（MainWindowモードでは無効）
+        var isEnabledBinding = new Binding(nameof(CheckItemViewModel.IsCheckBoxEnabled))
+        {
+            Source = viewModel
+        };
+        checkBox.SetBinding(CheckBox.IsEnabledProperty, isEnabledBinding);
+
+        // 画像確認ボタン（カメラ絵文字）
         var imageButton = new Button
         {
             Content = "📷",
             Width = 24,
             Height = 20,
             Margin = new Thickness(5, 0, 0, 0),
-            Visibility = captureFileExists ? Visibility.Visible : Visibility.Collapsed,
-            Tag = viewModel, // ViewModelを保持
             FontSize = 11,
             Background = new SolidColorBrush(Color.FromRgb(255, 220, 220)), // 薄い赤
             BorderBrush = new SolidColorBrush(Color.FromRgb(200, 160, 160)), // 薄い赤茶
@@ -305,44 +443,23 @@ public class CheckItemUIBuilder
             Cursor = System.Windows.Input.Cursors.Hand, // ホバー時に手のカーソル
             Padding = new Thickness(1),
             VerticalContentAlignment = VerticalAlignment.Center,
-            HorizontalContentAlignment = HorizontalAlignment.Center
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            DataContext = viewModel
         };
 
-        // 画像確認ボタンクリック
-        imageButton.Click += (sender, e) =>
+        // Phase 4: Visibilityをバインディング
+        var visibilityBinding = new Binding(nameof(CheckItemViewModel.CameraButtonVisibility))
         {
-            if (viewModel.CaptureFilePath != null)
-            {
-                var absolutePath = ResolveCaptureFilePath(viewModel.CaptureFilePath);
-
-                _logger.LogInformation("キャプチャ画像を表示: {Path} (documentRootPath: {Root})", absolutePath, _documentRootPath);
-
-                var viewer = new CaptureImageViewerWindow(absolutePath, null);
-                bool? result = viewer.ShowDialog();
-
-                // 削除された場合はボタンを非表示にする
-                if (viewer.IsDeleted)
-                {
-                    viewModel.CaptureFilePath = null;
-                    imageButton.Visibility = Visibility.Collapsed;
-
-                    // DBも更新（非同期処理を同期的に実行）
-                    if (_currentDocument != null)
-                    {
-                        Task.Run(async () =>
-                        {
-                            var linkedItem = await _checkItemDocumentRepository.GetByDocumentAndCheckItemAsync(
-                                _currentDocument.Id, viewModel.Entity.Id);
-                            if (linkedItem != null)
-                            {
-                                await _checkItemDocumentRepository.UpdateCaptureFileAsync(linkedItem.Id, null);
-                                await _checkItemDocumentRepository.SaveChangesAsync();
-                            }
-                        }).Wait();
-                    }
-                }
-            }
+            Source = viewModel
         };
+        imageButton.SetBinding(Button.VisibilityProperty, visibilityBinding);
+
+        // Phase 4: Commandをバインディング
+        var commandBinding = new Binding(nameof(CheckItemViewModel.ViewCaptureCommand))
+        {
+            Source = viewModel
+        };
+        imageButton.SetBinding(Button.CommandProperty, commandBinding);
 
         // StackPanelにCheckBoxとボタンを配置
         var stackPanel = new StackPanel
@@ -353,169 +470,58 @@ public class CheckItemUIBuilder
         stackPanel.Children.Add(checkBox);
         stackPanel.Children.Add(imageButton);
 
-        // チェック状態変更イベント（ChecklistWindowのみ有効）
+        // Phase 4: チェック状態変更時にコマンドを実行
+        // 注意: TwoWayバインディングでIsCheckedが更新された後に、明示的にコマンドを実行
         checkBox.Checked += async (sender, e) =>
         {
-            // MainWindow（_currentDocument == null）ではチェック状態を元に戻して何もしない
-            if (_currentDocument == null)
+            // MainWindowモードの場合は何もしない（IsCheckBoxEnabled=falseで操作できない）
+            if (viewModel.IsMainWindow)
             {
-                checkBox.IsChecked = viewModel.IsChecked;
                 return;
             }
 
-            // 既存の紐づき画像があるかチェック
-            var existingLink = await _checkItemDocumentRepository.GetByDocumentAndCheckItemAsync(
-                _currentDocument.Id, viewModel.Entity.Id);
-
-            if (existingLink != null && !string.IsNullOrEmpty(existingLink.CaptureFile))
+            // コマンドが設定されている場合は実行
+            if (viewModel.CheckedChangedCommand?.CanExecute(null) == true)
             {
-                // 既存の画像がある場合、復帰するか確認
-                var absolutePath = ResolveCaptureFilePath(existingLink.CaptureFile);
-                if (File.Exists(absolutePath))
+                viewModel.CheckedChangedCommand.Execute(null);
+
+                // コマンド実行後、キャプチャ取得を促す
+                if (_onCaptureRequested != null && !viewModel.HasCapture)
                 {
-                    var restoreResult = MessageBox.Show(
-                        "以前保存したキャプチャ画像があります。復帰しますか？\n\n「いいえ」を選択すると破棄して新しく紐づけます。",
-                        "画像復帰確認",
-                        MessageBoxButton.YesNoCancel,
+                    var result = MessageBox.Show(
+                        "この箇所のキャプチャを取得しますか？",
+                        "キャプチャ確認",
+                        MessageBoxButton.YesNo,
                         MessageBoxImage.Question);
 
-                    if (restoreResult == MessageBoxResult.Cancel)
+                    if (result == MessageBoxResult.Yes)
                     {
-                        // キャンセル：チェックを元に戻す
-                        checkBox.IsChecked = false;
-                        return;
+                        await _onCaptureRequested(viewModel, stackPanel);
                     }
-                    else if (restoreResult == MessageBoxResult.Yes)
-                    {
-                        // 復帰：既存の画像を使用
-                        viewModel.IsChecked = true;
-                        viewModel.CaptureFilePath = existingLink.CaptureFile;
-                        imageButton.Visibility = Visibility.Visible;
-                        // DBは既に紐づいているので更新不要
-                        _logger.LogInformation("既存のキャプチャ画像を復帰: {Path}", existingLink.CaptureFile);
-                        return;
-                    }
-                    // 「いいえ」の場合：既存のキャプチャを破棄して続行
-                    await _checkItemDocumentRepository.UpdateCaptureFileAsync(existingLink.Id, null);
-                    await _checkItemDocumentRepository.SaveChangesAsync();
-                    viewModel.CaptureFilePath = null;
-                    _logger.LogInformation("既存のキャプチャ画像を破棄: {Path}", existingLink.CaptureFile);
                 }
             }
-
-            viewModel.IsChecked = true;
-
-            // 紐づけを作成（キャプチャの有無に関わらず）
-            await SaveStatusAsync(viewModel);
-
-            // キャプチャを取得するか確認
-            if (_onCaptureRequested != null)
-            {
-                var result = MessageBox.Show(
-                    "この箇所のキャプチャを取得しますか？",
-                    "キャプチャ確認",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-
-                if (result == MessageBoxResult.Yes)
-                {
-                    await _onCaptureRequested(viewModel, stackPanel);
-                    // UI更新は PerformCaptureForCheckItem 内で行われる
-                }
-            }
-
-            // チェック状態を確実に反映（いいえを押した場合も含む）
-            checkBox.IsChecked = true;
         };
 
-        checkBox.Unchecked += async (sender, e) =>
+        checkBox.Unchecked += (sender, e) =>
         {
-            // MainWindow（_currentDocument == null）ではチェック状態を元に戻して何もしない
-            if (_currentDocument == null)
+            // MainWindowモードの場合は何もしない
+            if (viewModel.IsMainWindow)
             {
-                checkBox.IsChecked = viewModel.IsChecked;
                 return;
             }
 
-            viewModel.IsChecked = false;
-
-            // カメラアイコンボタンを非表示にする
-            imageButton.Visibility = Visibility.Collapsed;
-
-            await SaveStatusAsync(viewModel);
+            // コマンドが設定されている場合は実行
+            if (viewModel.CheckedChangedCommand?.CanExecute(null) == true)
+            {
+                viewModel.CheckedChangedCommand.Execute(null);
+            }
         };
 
         return stackPanel;
     }
 
-    /// <summary>
-    /// チェック状態をDBに保存する（Documentと紐づけて保存）
-    /// </summary>
-    private async Task SaveStatusAsync(CheckItemViewModel viewModel)
-    {
-        try
-        {
-            if (_currentDocument == null)
-            {
-                // Documentが指定されていない場合は、CheckItemのStatusを更新
-                _logger.LogInformation("チェック状態を保存: {Path} = {Status}", viewModel.Path, viewModel.Status);
-
-                await _repository.UpdateAsync(viewModel.Entity);
-                await _repository.SaveChangesAsync();
-
-                _logger.LogDebug("チェック状態の保存が完了しました");
-            }
-            else
-            {
-                // Documentが指定されている場合は、CheckItemDocumentテーブルに保存
-                if (viewModel.IsChecked)
-                {
-                    // チェックONの場合：CheckItemDocumentに追加または更新
-                    var existing = await _checkItemDocumentRepository.GetByDocumentAndCheckItemAsync(
-                        _currentDocument.Id,
-                        viewModel.Entity.Id);
-
-                    if (existing == null)
-                    {
-                        // 新規作成
-                        var checkItemDocument = new CheckItemDocument
-                        {
-                            DocumentId = _currentDocument.Id,
-                            CheckItemId = viewModel.Entity.Id,
-                            LinkedAt = DateTime.UtcNow
-                        };
-
-                        await _checkItemDocumentRepository.AddAsync(checkItemDocument);
-                        await _checkItemDocumentRepository.SaveChangesAsync();
-
-                        _logger.LogInformation("チェック項目を資料に紐づけました: Document={DocumentId}, CheckItem={CheckItemId} ({Path})",
-                            _currentDocument.Id, viewModel.Entity.Id, viewModel.Path);
-                    }
-                    else
-                    {
-                        // 既存の紐づきがある場合は LinkedAt を更新（上書き）
-                        existing.LinkedAt = DateTime.UtcNow;
-                        await _checkItemDocumentRepository.UpdateAsync(existing);
-                        await _checkItemDocumentRepository.SaveChangesAsync();
-
-                        _logger.LogInformation("チェック項目の紐づけを更新しました: Document={DocumentId}, CheckItem={CheckItemId} ({Path})",
-                            _currentDocument.Id, viewModel.Entity.Id, viewModel.Path);
-                    }
-                }
-                else
-                {
-                    // チェックOFFの場合：紐づきは削除せず維持する（再度オンにしたときに復帰できるように）
-                    // UIの表示状態のみ変更（カメラアイコンは非表示になる）
-                    _logger.LogInformation("チェック項目をオフにしました（紐づきは維持）: Document={DocumentId}, CheckItem={CheckItemId} ({Path})",
-                        _currentDocument.Id, viewModel.Entity.Id, viewModel.Path);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "チェック状態の保存に失敗しました: {Path}", viewModel.Path);
-        }
-    }
+    // Phase 4: SaveStatusAsyncメソッドは削除されました
+    // チェック状態の保存は ChecklistStateManager.CommitTransitionAsync に移行
 
     /// <summary>
     /// 階層の深さに応じた枠線の色を取得
