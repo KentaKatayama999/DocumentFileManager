@@ -25,6 +25,12 @@ public class CheckItemDocument
     public DateTime LinkedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
+    /// チェック状態
+    /// true: チェックON、false: チェックOFF（履歴として保持）
+    /// </summary>
+    public bool IsChecked { get; set; } = true;
+
+    /// <summary>
     /// 画面キャプチャのファイルパス（相対パス）
     /// 紐づけ時にスクリーンショットを保存した場合に設定
     /// </summary>
