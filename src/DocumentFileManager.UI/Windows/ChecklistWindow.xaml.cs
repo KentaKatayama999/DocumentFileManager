@@ -323,9 +323,14 @@ public partial class ChecklistWindow : Window
         {
             _logger.LogInformation("チェック項目の読み込みを開始します (Document: {DocumentId})", _document.Id);
 
+            // コールバックを設定（MVVMパターン）
+            _checkItemUIBuilder.OnCaptureRequested = async (viewModel) =>
+            {
+                await PerformCaptureForCheckItem(viewModel);
+            };
+
             // UIBuilderを使用してGroupBox階層を構築（Documentと紐づけて）
-            // キャプチャ要求デリゲートを渡す
-            await _checkItemUIBuilder.BuildAsync(CheckItemsContainer, _document, PerformCaptureForCheckItem);
+            await _checkItemUIBuilder.BuildAsync(CheckItemsContainer, _document);
 
             _logger.LogInformation("チェック項目の階層表示が完了しました");
         }
@@ -565,9 +570,9 @@ public partial class ChecklistWindow : Window
 
                 _logger.LogInformation("チェック項目をJSONファイルに保存しました: {FilePath}", jsonFilePath);
 
-                // UIを再読み込み
+                // UIを再読み込み（コールバックはすでに設定済み）
                 CheckItemsContainer.Children.Clear();
-                await _checkItemUIBuilder.BuildAsync(CheckItemsContainer, _document, PerformCaptureForCheckItem);
+                await _checkItemUIBuilder.BuildAsync(CheckItemsContainer, _document);
 
                 _logger.LogInformation("チェック項目UIを再読み込みしました");
 
@@ -684,8 +689,8 @@ public partial class ChecklistWindow : Window
             // UIパネルをクリア
             CheckItemsContainer.Children.Clear();
 
-            // チェック項目を再読み込み
-            await _checkItemUIBuilder.BuildAsync(CheckItemsContainer, _document, PerformCaptureForCheckItem);
+            // チェック項目を再読み込み（コールバックはすでに設定済み）
+            await _checkItemUIBuilder.BuildAsync(CheckItemsContainer, _document);
 
             _logger.LogInformation("チェック項目の再読み込みが完了しました");
         }
@@ -996,7 +1001,7 @@ public partial class ChecklistWindow : Window
     /// <summary>
     /// チェック項目に対してキャプチャ処理を実行
     /// </summary>
-    private async Task PerformCaptureForCheckItem(CheckItemViewModel viewModel, UIElement checkBoxContainer)
+    private async Task PerformCaptureForCheckItem(CheckItemViewModel viewModel)
     {
         bool continueCapture = true;
 
@@ -1069,10 +1074,15 @@ public partial class ChecklistWindow : Window
                         {
                             _logger.LogInformation("キャプチャ画像を保存: {Path}", relativePath);
 
-                            // ViewModelを更新（バインディングでUIが自動更新される）
-                            viewModel.CaptureFilePath = relativePath;
-                            viewModel.IsChecked = true;
-                            viewModel.UpdateCaptureButton(); // CameraButtonVisibilityを更新
+                            // ViewModelを更新（UIスレッドで確実に実行）
+                            await Dispatcher.InvokeAsync(() =>
+                            {
+                                viewModel.CaptureFilePath = relativePath;
+                                viewModel.IsChecked = true;
+                                viewModel.UpdateCaptureButton(); // CameraButtonVisibilityを更新
+                                _logger.LogDebug("ViewModel更新完了: CaptureFilePath={Path}, IsChecked={IsChecked}, CameraButtonVisibility={Visibility}",
+                                    viewModel.CaptureFilePath, viewModel.IsChecked, viewModel.CameraButtonVisibility);
+                            });
 
                             // DBを更新
                             var linkedItem = await _checkItemDocumentRepository.GetByDocumentAndCheckItemAsync(

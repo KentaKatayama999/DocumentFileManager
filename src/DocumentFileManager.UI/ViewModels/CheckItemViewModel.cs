@@ -11,6 +11,7 @@ namespace DocumentFileManager.UI.ViewModels;
 
 /// <summary>
 /// チェック項目の表示用ViewModel
+/// MVVMパターンに準拠した設計
 /// </summary>
 public class CheckItemViewModel : INotifyPropertyChanged
 {
@@ -43,6 +44,9 @@ public class CheckItemViewModel : INotifyPropertyChanged
                 // ステータスを更新
                 Entity.Status = value ? ItemStatus.Current : ItemStatus.Unspecified;
                 OnPropertyChanged(nameof(Status));
+
+                // カメラボタンの表示状態も更新
+                OnPropertyChanged(nameof(CameraButtonVisibility));
             }
         }
     }
@@ -78,7 +82,7 @@ public class CheckItemViewModel : INotifyPropertyChanged
     /// <summary>チェック項目かどうか（子要素を持たない）</summary>
     public bool IsItem => Children.Count == 0;
 
-    #region Phase 3拡張プロパティ
+    #region 表示プロパティ
 
     /// <summary>ドキュメントルートパス</summary>
     public string DocumentRootPath { get; }
@@ -90,15 +94,26 @@ public class CheckItemViewModel : INotifyPropertyChanged
     public bool IsCheckBoxEnabled => !IsMainWindow;
 
     /// <summary>カメラボタンの表示状態</summary>
+    /// <remarks>
+    /// MainWindowモード: キャプチャがあれば表示（IsCheckedに関係なく）
+    /// ChecklistWindowモード: チェックON かつ キャプチャがある場合のみ表示
+    /// </remarks>
     public Visibility CameraButtonVisibility
     {
         get
         {
+            // キャプチャがなければ非表示
             if (!HasCapture)
                 return Visibility.Collapsed;
 
+            // ファイルが存在しなければ非表示
             var absolutePath = GetCaptureAbsolutePath();
             if (absolutePath == null || !File.Exists(absolutePath))
+                return Visibility.Collapsed;
+
+            // ChecklistWindowモード（編集可能）の場合、チェックON時のみ表示
+            // MainWindowモード（読み取り専用）の場合、キャプチャがあれば常に表示
+            if (!IsMainWindow && !IsChecked)
                 return Visibility.Collapsed;
 
             return Visibility.Visible;
@@ -119,14 +134,30 @@ public class CheckItemViewModel : INotifyPropertyChanged
 
     #endregion
 
-    #region Phase 4拡張プロパティ（ICommand）
+    #region コマンド
 
+    private ICommand? _selectCommand;
     private ICommand? _checkedChangedCommand;
     private ICommand? _viewCaptureCommand;
 
     /// <summary>
-    /// チェック状態変更コマンド
-    /// 外部から設定される（CheckItemUIBuilderまたはChecklistWindow）
+    /// 選択コマンド（MainWindow用: クリックで資料フィルタリング）
+    /// </summary>
+    public ICommand? SelectCommand
+    {
+        get => _selectCommand;
+        set
+        {
+            if (_selectCommand != value)
+            {
+                _selectCommand = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    /// <summary>
+    /// チェック状態変更コマンド（ChecklistWindow用）
     /// </summary>
     public ICommand? CheckedChangedCommand
     {
@@ -143,7 +174,6 @@ public class CheckItemViewModel : INotifyPropertyChanged
 
     /// <summary>
     /// キャプチャ表示コマンド
-    /// 外部から設定される（CheckItemUIBuilderまたはChecklistWindow）
     /// </summary>
     public ICommand? ViewCaptureCommand
     {

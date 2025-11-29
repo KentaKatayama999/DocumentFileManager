@@ -469,7 +469,7 @@ public class CheckItemViewModelTests
     /// キャプチャが存在する場合はカメラボタンを表示
     /// </summary>
     [Fact]
-    public void CameraButtonVisibility_HasCaptureとファイル存在で表示()
+    public void CameraButtonVisibility_HasCaptureとファイル存在でチェックON時に表示()
     {
         // Arrange
         var tempDir = Path.Combine(Path.GetTempPath(), "CameraButtonVisibilityTest");
@@ -482,8 +482,69 @@ public class CheckItemViewModelTests
             var entity = new CheckItem { Path = "設計図面", Label = "設計図面" };
             var viewModel = new CheckItemViewModel(entity, documentRootPath: tempDir, isMainWindow: false);
             viewModel.CaptureFilePath = "test_capture.png";
+            viewModel.IsChecked = true; // ChecklistWindowモードではチェックON時のみ表示
 
             // Act & Assert
+            Assert.Equal(Visibility.Visible, viewModel.CameraButtonVisibility);
+        }
+        finally
+        {
+            // Cleanup
+            if (File.Exists(tempFile)) File.Delete(tempFile);
+            if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
+        }
+    }
+
+    /// <summary>
+    /// ChecklistWindowモードでチェックOFF時はキャプチャがあっても非表示
+    /// </summary>
+    [Fact]
+    public void CameraButtonVisibility_チェックOFF時はキャプチャがあっても非表示()
+    {
+        // Arrange
+        var tempDir = Path.Combine(Path.GetTempPath(), "CameraButtonVisibilityTest2");
+        Directory.CreateDirectory(tempDir);
+        var tempFile = Path.Combine(tempDir, "test_capture.png");
+        File.WriteAllText(tempFile, "test");
+
+        try
+        {
+            var entity = new CheckItem { Path = "設計図面", Label = "設計図面" };
+            var viewModel = new CheckItemViewModel(entity, documentRootPath: tempDir, isMainWindow: false);
+            viewModel.CaptureFilePath = "test_capture.png";
+            viewModel.IsChecked = false; // チェックOFF
+
+            // Act & Assert - チェックOFF時はキャプチャがあっても非表示（状態22）
+            Assert.Equal(Visibility.Collapsed, viewModel.CameraButtonVisibility);
+        }
+        finally
+        {
+            // Cleanup
+            if (File.Exists(tempFile)) File.Delete(tempFile);
+            if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
+        }
+    }
+
+    /// <summary>
+    /// MainWindowモードではチェック状態に関係なくキャプチャがあれば表示
+    /// </summary>
+    [Fact]
+    public void CameraButtonVisibility_MainWindowモードではチェック状態に関係なく表示()
+    {
+        // Arrange
+        var tempDir = Path.Combine(Path.GetTempPath(), "CameraButtonVisibilityTest3");
+        Directory.CreateDirectory(tempDir);
+        var tempFile = Path.Combine(tempDir, "test_capture.png");
+        File.WriteAllText(tempFile, "test");
+
+        try
+        {
+            var entity = new CheckItem { Path = "設計図面", Label = "設計図面" };
+            var viewModel = new CheckItemViewModel(entity, documentRootPath: tempDir, isMainWindow: true);
+            viewModel.CaptureFilePath = "test_capture.png";
+            viewModel.IsChecked = false; // チェックOFF
+
+            // Act & Assert - MainWindowモードではキャプチャがあれば常に表示
             Assert.Equal(Visibility.Visible, viewModel.CameraButtonVisibility);
         }
         finally

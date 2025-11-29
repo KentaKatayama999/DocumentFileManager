@@ -6,6 +6,7 @@
         xmlns:local="clr-namespace:DocumentFileManager.UI"
         xmlns:converters="clr-namespace:DocumentFileManager.UI.Converters"
         xmlns:vm="clr-namespace:DocumentFileManager.UI.ViewModels"
+        xmlns:behaviors="clr-namespace:DocumentFileManager.UI.Behaviors"
         mc:Ignorable="d"
         Title="資料保存アプリ - Document File Manager"
         Height="600" Width="900"
@@ -45,13 +46,14 @@
             <Setter Property="HorizontalContentAlignment" Value="Center" />
         </Style>
 
-        <!-- CheckItemのDataTemplate（Phase 5: XAML定義） -->
+        <!-- CheckItemのDataTemplate（MainWindow用: クリックでフィルタリング、チェック状態は変更しない） -->
         <DataTemplate x:Key="CheckItemTemplate" DataType="{x:Type vm:CheckItemViewModel}">
             <StackPanel Orientation="Horizontal" Margin="2">
-                <!-- チェックボックス -->
+                <!-- チェックボックス（クリック時にSelectCommandを実行、チェック状態は変更しない） -->
                 <CheckBox Content="{Binding Label}"
-                          IsChecked="{Binding IsChecked, Mode=TwoWay}"
-                          IsEnabled="{Binding IsCheckBoxEnabled}"
+                          IsChecked="{Binding IsChecked, Mode=OneWay}"
+                          IsEnabled="True"
+                          behaviors:CheckBoxBehaviors.ClickCommand="{Binding SelectCommand}"
                           Style="{StaticResource CheckItemCheckBoxStyle}" />
 
                 <!-- カメラボタン -->

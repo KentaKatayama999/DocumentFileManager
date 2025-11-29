@@ -74,7 +74,7 @@ public partial class MainWindow : Window
     // フィルタリングとハイライト用
     private List<Document> _allDocuments = new List<Document>();
     private CheckItemViewModel? _selectedCheckItem;
-    private Dictionary<int, StackPanel> _checkItemUIElements = new Dictionary<int, StackPanel>();
+    private Dictionary<int, FrameworkElement> _checkItemUIElements = new Dictionary<int, FrameworkElement>();
 
     public MainWindow(
         IDocumentRepository documentRepository,
@@ -224,11 +224,17 @@ public partial class MainWindow : Window
             _logger.LogInformation("チェック項目の読み込みを開始します");
             StatusText.Text = "チェック項目を読み込み中...";
 
+            // コールバックを設定（MVVMパターン）
+            _checkItemUIBuilder.OnItemSelected = async (viewModel) =>
+            {
+                await HandleCheckItemSelected(viewModel);
+            };
+
             // UIBuilderを使用してGroupBox階層を構築
             await _checkItemUIBuilder.BuildAsync(CheckItemsContainer);
 
-            // チェックボックスのイベントを登録
-            RegisterCheckBoxEvents(CheckItemsContainer);
+            // UI要素のマッピングを登録
+            RegisterCheckItemUIElements(CheckItemsContainer);
 
             // ルート項目の数を取得して表示
             var rootItems = await _checkItemRepository.GetRootItemsAsync();
@@ -973,68 +979,50 @@ public partial class MainWindow : Window
     #region フィルタリングとハイライト機能
 
     /// <summary>
-    /// チェックボックスのイベントを再帰的に登録
+    /// チェック項目のUI要素マッピングを再帰的に登録
     /// </summary>
-    private void RegisterCheckBoxEvents(Panel panel)
+    private void RegisterCheckItemUIElements(Panel panel)
     {
         foreach (var child in panel.Children)
         {
-            if (child is StackPanel stackPanel && stackPanel.Tag != null)
+            if (child is ContentControl contentControl && contentControl.Tag is CheckItemViewModel viewModel)
             {
-                var tag = stackPanel.Tag;
-                var tagType = tag.GetType();
-                var checkBoxProperty = tagType.GetProperty("CheckBox");
-                var viewModelProperty = tagType.GetProperty("ViewModel");
-
-                if (checkBoxProperty != null && viewModelProperty != null)
-                {
-                    var checkBox = checkBoxProperty.GetValue(tag) as CheckBox;
-                    var viewModel = viewModelProperty.GetValue(tag) as CheckItemViewModel;
-
-                    if (checkBox != null && viewModel != null)
-                    {
-                        // UIElementsマップに追加
-                        _checkItemUIElements[viewModel.Entity.Id] = stackPanel;
-
-                        // クリックイベントを登録
-                        checkBox.Click += CheckBox_Click;
-                    }
-                }
+                // ContentControl（DataTemplate使用）をマップに追加
+                _checkItemUIElements[viewModel.Entity.Id] = contentControl;
+            }
+            else if (child is StackPanel stackPanel && stackPanel.Tag is CheckItemViewModel vm)
+            {
+                // 後方互換性: StackPanelもサポート
+                _checkItemUIElements[vm.Entity.Id] = stackPanel;
             }
             else if (child is GroupBox groupBox && groupBox.Content is Panel childPanel)
             {
-                RegisterCheckBoxEvents(childPanel);
+                RegisterCheckItemUIElements(childPanel);
             }
             else if (child is Panel subPanel)
             {
-                RegisterCheckBoxEvents(subPanel);
+                RegisterCheckItemUIElements(subPanel);
             }
         }
     }
 
     /// <summary>
-    /// チェックボックスクリック時の処理（メインフォーム専用）
+    /// チェック項目選択時の処理（MVVMコールバック）
     /// </summary>
-    private async void CheckBox_Click(object sender, RoutedEventArgs e)
+    private async Task HandleCheckItemSelected(CheckItemViewModel viewModel)
     {
-        if (sender is CheckBox checkBox && checkBox.Tag is CheckItemViewModel viewModel)
+        // 現在選択中のチェック項目と同じ場合は選択解除
+        if (_selectedCheckItem?.Entity.Id == viewModel.Entity.Id)
         {
-            // チェック状態の変更をキャンセル（トグルを元に戻す）
-            checkBox.IsChecked = !checkBox.IsChecked;
-
-            // 現在選択中のチェック項目と同じ場合は選択解除
-            if (_selectedCheckItem?.Entity.Id == viewModel.Entity.Id)
-            {
-                ClearCheckItemSelection();
-                DocumentsListView.ItemsSource = _allDocuments;
-                DocumentCountText.Text = $"{_allDocuments.Count} 件";
-                _logger.LogInformation("チェック項目の選択を解除しました");
-            }
-            else
-            {
-                // 新しいチェック項目を選択してフィルタリング
-                await FilterDocumentsByCheckItem(viewModel);
-            }
+            ClearCheckItemSelection();
+            DocumentsListView.ItemsSource = _allDocuments;
+            DocumentCountText.Text = $"{_allDocuments.Count} 件";
+            _logger.LogInformation("チェック項目の選択を解除しました");
+        }
+        else
+        {
+            // 新しいチェック項目を選択してフィルタリング
+            await FilterDocumentsByCheckItem(viewModel);
         }
     }
 
@@ -1132,9 +1120,9 @@ public partial class MainWindow : Window
             DocumentCountText.Text = $"{filteredDocuments.Count} 件（フィルタリング中）";
 
             // 選択されたチェック項目をハイライト（薄い青）
-            if (_checkItemUIElements.TryGetValue(checkItem.Entity.Id, out var stackPanel))
+            if (_checkItemUIElements.TryGetValue(checkItem.Entity.Id, out var element))
             {
-                stackPanel.Background = new SolidColorBrush(Color.FromRgb(227, 242, 253)); // #E3F2FD
+                SetElementBackground(element, new SolidColorBrush(Color.FromRgb(227, 242, 253))); // #E3F2FD
             }
 
             _logger.LogInformation("チェック項目 '{Label}' に紐づく資料 {Count} 件を表示しました", checkItem.Label, filteredDocuments.Count);
@@ -1151,9 +1139,9 @@ public partial class MainWindow : Window
     /// </summary>
     private void ClearCheckItemSelection()
     {
-        if (_selectedCheckItem != null && _checkItemUIElements.TryGetValue(_selectedCheckItem.Entity.Id, out var stackPanel))
+        if (_selectedCheckItem != null && _checkItemUIElements.TryGetValue(_selectedCheckItem.Entity.Id, out var element))
         {
-            stackPanel.Background = Brushes.Transparent;
+            SetElementBackground(element, Brushes.Transparent);
         }
         _selectedCheckItem = null;
     }
@@ -1176,9 +1164,9 @@ public partial class MainWindow : Window
             // ハイライト（薄い黄色）
             foreach (var checkItemId in checkItemIds)
             {
-                if (_checkItemUIElements.TryGetValue(checkItemId, out var stackPanel))
+                if (_checkItemUIElements.TryGetValue(checkItemId, out var element))
                 {
-                    stackPanel.Background = new SolidColorBrush(Color.FromRgb(255, 249, 196)); // #FFF9C4
+                    SetElementBackground(element, new SolidColorBrush(Color.FromRgb(255, 249, 196))); // #FFF9C4
                 }
             }
 
@@ -1195,14 +1183,29 @@ public partial class MainWindow : Window
     /// </summary>
     private void ClearCheckItemHighlights()
     {
-        foreach (var stackPanel in _checkItemUIElements.Values)
+        foreach (var element in _checkItemUIElements.Values)
         {
             // 選択中のチェック項目（フィルタリング用）は青いまま維持
-            if (_selectedCheckItem != null && stackPanel == _checkItemUIElements[_selectedCheckItem.Entity.Id])
+            if (_selectedCheckItem != null && element == _checkItemUIElements[_selectedCheckItem.Entity.Id])
             {
                 continue;
             }
-            stackPanel.Background = Brushes.Transparent;
+            SetElementBackground(element, Brushes.Transparent);
+        }
+    }
+
+    /// <summary>
+    /// UI要素の背景色を設定（ContentControl, Panel両方に対応）
+    /// </summary>
+    private void SetElementBackground(FrameworkElement element, Brush brush)
+    {
+        if (element is Control control)
+        {
+            control.Background = brush;
+        }
+        else if (element is Panel panel)
+        {
+            panel.Background = brush;
         }
     }
 
