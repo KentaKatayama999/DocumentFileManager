@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
 using DocumentFileManager.Entities;
+using DocumentFileManager.UI.Models;
 using DocumentFileManager.ValueObjects;
 
 namespace DocumentFileManager.UI.ViewModels;
@@ -17,6 +18,9 @@ public class CheckItemViewModel : INotifyPropertyChanged
 {
     private bool _isChecked;
     private string? _captureFilePath;
+
+    /// <summary>状態管理オブジェクト</summary>
+    public CheckItemState State { get; private set; }
 
     /// <summary>チェック項目エンティティ</summary>
     public CheckItem Entity { get; }
@@ -45,6 +49,9 @@ public class CheckItemViewModel : INotifyPropertyChanged
                 Entity.Status = value ? ItemStatus.Current : ItemStatus.Unspecified;
                 OnPropertyChanged(nameof(Status));
 
+                // CheckItemStateのItemStateも更新（チェック状態を反映）
+                UpdateItemStateFromCheckState();
+
                 // カメラボタンの表示状態も更新
                 OnPropertyChanged(nameof(CameraButtonVisibility));
             }
@@ -65,6 +72,10 @@ public class CheckItemViewModel : INotifyPropertyChanged
                 _captureFilePath = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(HasCapture));
+
+                // CheckItemStateのCaptureFileExistsも更新（ファイル存在チェック）
+                UpdateCaptureFileExistsFromPath();
+
                 OnPropertyChanged(nameof(CameraButtonVisibility));
             }
         }
@@ -97,28 +108,9 @@ public class CheckItemViewModel : INotifyPropertyChanged
     /// <remarks>
     /// MainWindowモード: キャプチャがあれば表示（IsCheckedに関係なく）
     /// ChecklistWindowモード: チェックON かつ キャプチャがある場合のみ表示
+    /// 計算ロジックはCheckItemStateに委譲
     /// </remarks>
-    public Visibility CameraButtonVisibility
-    {
-        get
-        {
-            // キャプチャがなければ非表示
-            if (!HasCapture)
-                return Visibility.Collapsed;
-
-            // ファイルが存在しなければ非表示
-            var absolutePath = GetCaptureAbsolutePath();
-            if (absolutePath == null || !File.Exists(absolutePath))
-                return Visibility.Collapsed;
-
-            // ChecklistWindowモード（編集可能）の場合、チェックON時のみ表示
-            // MainWindowモード（読み取り専用）の場合、キャプチャがあれば常に表示
-            if (!IsMainWindow && !IsChecked)
-                return Visibility.Collapsed;
-
-            return Visibility.Visible;
-        }
-    }
+    public Visibility CameraButtonVisibility => State.CameraButtonVisibility;
 
     /// <summary>
     /// キャプチャの絶対パスを取得
@@ -222,6 +214,112 @@ public class CheckItemViewModel : INotifyPropertyChanged
 
         // 初期状態をエンティティから設定
         _isChecked = entity.Status == ItemStatus.Current;
+
+        // CheckItemStateを初期化（ファイル存在チェックはここで1回のみ実行）
+        var windowMode = isMainWindow ? WindowMode.MainWindow : WindowMode.ChecklistWindow;
+        var itemState = DetermineInitialItemState(entity.Status);
+        State = new CheckItemState(windowMode, itemState, false); // CaptureFileExistsは後で設定
+    }
+
+    /// <summary>
+    /// ItemStatusから初期ItemStateコードを決定
+    /// </summary>
+    private static string DetermineInitialItemState(ItemStatus status)
+    {
+        return status switch
+        {
+            ItemStatus.Current => "10",  // チェックON、キャプチャなし（初期）
+            ItemStatus.Unspecified => "00", // 未紐づけ
+            _ => "00"
+        };
+    }
+
+    /// <summary>
+    /// ItemState（状態コード）を更新
+    /// </summary>
+    public void UpdateItemState(string newItemState)
+    {
+        if (State.ItemState != newItemState)
+        {
+            State.ItemState = newItemState;
+            OnPropertyChanged(nameof(State));
+            OnPropertyChanged(nameof(CameraButtonVisibility));
+        }
+    }
+
+    /// <summary>
+    /// CaptureFileExistsを更新
+    /// </summary>
+    public void UpdateCaptureFileExists(bool exists)
+    {
+        if (State.CaptureFileExists != exists)
+        {
+            State.CaptureFileExists = exists;
+            OnPropertyChanged(nameof(State));
+            OnPropertyChanged(nameof(CameraButtonVisibility));
+        }
+    }
+
+    /// <summary>
+    /// CaptureFilePathからCaptureFileExistsとItemStateを更新
+    /// </summary>
+    private void UpdateCaptureFileExistsFromPath()
+    {
+        bool fileExists;
+        if (string.IsNullOrEmpty(_captureFilePath) || string.IsNullOrEmpty(DocumentRootPath))
+        {
+            fileExists = false;
+        }
+        else
+        {
+            var absolutePath = System.IO.Path.Combine(DocumentRootPath, _captureFilePath);
+            fileExists = File.Exists(absolutePath);
+        }
+
+        State.CaptureFileExists = fileExists;
+
+        // ItemStateのキャプチャ状態部分も更新
+        UpdateItemStateCaptureFlag(fileExists);
+    }
+
+    /// <summary>
+    /// ItemStateのキャプチャ状態部分（2文字目）を更新
+    /// </summary>
+    private void UpdateItemStateCaptureFlag(bool hasCapture)
+    {
+        var currentCheckState = State.ItemState?.Length >= 1 ? State.ItemState[0] : '0';
+
+        if (currentCheckState == '1')
+        {
+            // チェックON状態: 10 or 11
+            State.ItemState = hasCapture ? "11" : "10";
+        }
+        else if (currentCheckState == '2')
+        {
+            // チェックOFF（履歴あり）: 20 or 22
+            State.ItemState = hasCapture ? "22" : "20";
+        }
+        // currentCheckState == '0' の場合は未紐づけなので変更しない
+    }
+
+    /// <summary>
+    /// チェック状態からItemStateを更新
+    /// </summary>
+    private void UpdateItemStateFromCheckState()
+    {
+        // CaptureFileExistsの状態を使用してItemStateを決定
+        var hasCapture = State.CaptureFileExists;
+
+        if (_isChecked)
+        {
+            // チェックON: 10 or 11
+            State.ItemState = hasCapture ? "11" : "10";
+        }
+        else
+        {
+            // チェックOFF: 20 or 22
+            State.ItemState = hasCapture ? "22" : "20";
+        }
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

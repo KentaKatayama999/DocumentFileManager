@@ -6,6 +6,8 @@ using CommunityToolkit.Mvvm.Input;
 using DocumentFileManager.Entities;
 using DocumentFileManager.Infrastructure.Repositories;
 using DocumentFileManager.UI.Configuration;
+using DocumentFileManager.UI.Factories;
+using DocumentFileManager.UI.Models;
 using DocumentFileManager.UI.Services.Abstractions;
 using DocumentFileManager.UI.ViewModels;
 using DocumentFileManager.UI.Windows;
@@ -22,6 +24,7 @@ public class CheckItemUIBuilder
     private readonly ICheckItemRepository _repository;
     private readonly ICheckItemDocumentRepository _checkItemDocumentRepository;
     private readonly IChecklistStateManager _stateManager;
+    private readonly ICheckItemViewModelFactory _viewModelFactory;
     private readonly UISettings _settings;
     private readonly ILogger<CheckItemUIBuilder> _logger;
     private readonly string _documentRootPath;
@@ -45,6 +48,7 @@ public class CheckItemUIBuilder
         ICheckItemRepository repository,
         ICheckItemDocumentRepository checkItemDocumentRepository,
         IChecklistStateManager stateManager,
+        ICheckItemViewModelFactory viewModelFactory,
         UISettings settings,
         ILogger<CheckItemUIBuilder> logger,
         string documentRootPath)
@@ -52,6 +56,7 @@ public class CheckItemUIBuilder
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
         _checkItemDocumentRepository = checkItemDocumentRepository ?? throw new ArgumentNullException(nameof(checkItemDocumentRepository));
         _stateManager = stateManager ?? throw new ArgumentNullException(nameof(stateManager));
+        _viewModelFactory = viewModelFactory ?? throw new ArgumentNullException(nameof(viewModelFactory));
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _documentRootPath = documentRootPath ?? throw new ArgumentNullException(nameof(documentRootPath));
@@ -102,8 +107,12 @@ public class CheckItemUIBuilder
             _logger.LogInformation("全体表示モード：{Count} 件のチェック項目に最新キャプチャがあります", checkItemDocuments.Count);
         }
 
-        // ViewModelに変換
-        var viewModels = BuildViewModelHierarchy(rootItems, checkItemDocuments);
+        // ViewModelに変換（Factoryを使用）
+        var windowMode = document == null ? WindowMode.MainWindow : WindowMode.ChecklistWindow;
+        var viewModels = _viewModelFactory.CreateHierarchy(rootItems, windowMode, checkItemDocuments);
+
+        // コマンドを設定
+        SetupCommandsForHierarchy(viewModels);
 
         // UIを構築
         foreach (var viewModel in viewModels)
@@ -122,53 +131,22 @@ public class CheckItemUIBuilder
     }
 
     /// <summary>
-    /// ViewModelの階層構造を構築する
+    /// ViewModel階層全体にコマンドを設定する
     /// </summary>
-    private List<CheckItemViewModel> BuildViewModelHierarchy(
-        List<Entities.CheckItem> items,
-        Dictionary<int, CheckItemDocument>? checkItemDocuments)
+    private void SetupCommandsForHierarchy(List<CheckItemViewModel> viewModels)
     {
-        var viewModels = new List<CheckItemViewModel>();
-        var isMainWindow = _currentDocument == null;
-
-        foreach (var item in items)
+        foreach (var viewModel in viewModels)
         {
-            var viewModel = new CheckItemViewModel(item, _documentRootPath, isMainWindow);
-
-            // 紐づけデータから状態を設定
-            if (checkItemDocuments != null && checkItemDocuments.TryGetValue(item.Id, out var linkedItem))
-            {
-                if (_currentDocument != null)
-                {
-                    viewModel.IsChecked = linkedItem.IsChecked;
-                    viewModel.CaptureFilePath = linkedItem.CaptureFile;
-                }
-                else
-                {
-                    viewModel.CaptureFilePath = linkedItem.CaptureFile;
-                }
-            }
-
-            // コマンドを設定
             if (viewModel.IsItem)
             {
                 SetupCommands(viewModel);
             }
 
-            // 子要素を再帰的に追加
-            if (item.Children != null && item.Children.Count > 0)
+            if (viewModel.Children.Count > 0)
             {
-                var childViewModels = BuildViewModelHierarchy(item.Children.ToList(), checkItemDocuments);
-                foreach (var child in childViewModels)
-                {
-                    viewModel.Children.Add(child);
-                }
+                SetupCommandsForHierarchy(viewModel.Children.ToList());
             }
-
-            viewModels.Add(viewModel);
         }
-
-        return viewModels;
     }
 
     /// <summary>

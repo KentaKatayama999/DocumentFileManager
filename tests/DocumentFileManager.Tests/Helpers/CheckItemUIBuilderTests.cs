@@ -2,6 +2,7 @@ using System.IO;
 using DocumentFileManager.Infrastructure.Data;
 using DocumentFileManager.Infrastructure.Repositories;
 using DocumentFileManager.UI.Configuration;
+using DocumentFileManager.UI.Factories;
 using DocumentFileManager.UI.Helpers;
 using DocumentFileManager.UI.Services.Abstractions;
 using Microsoft.EntityFrameworkCore;
@@ -55,10 +56,12 @@ public class CheckItemUIBuilderTests : IDisposable
 
     private CheckItemUIBuilder CreateBuilder(string documentRootPath)
     {
+        var viewModelFactory = new CheckItemViewModelFactory(documentRootPath);
         return new CheckItemUIBuilder(
             _checkItemRepository,
             _checkItemDocumentRepository,
             _mockStateManager.Object,
+            viewModelFactory,
             _uiSettings,
             NullLogger<CheckItemUIBuilder>.Instance,
             documentRootPath);

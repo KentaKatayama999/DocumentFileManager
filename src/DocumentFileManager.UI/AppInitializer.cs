@@ -3,6 +3,7 @@ using System.Windows;
 using DocumentFileManager.Infrastructure.Data;
 using DocumentFileManager.Infrastructure.Repositories;
 using DocumentFileManager.UI.Configuration;
+using DocumentFileManager.UI.Factories;
 using DocumentFileManager.UI.Helpers;
 using DocumentFileManager.UI.Services;
 using DocumentFileManager.UI.Services.Abstractions;
@@ -97,6 +98,14 @@ public static class AppInitializer
                 services.AddScoped<Infrastructure.Services.ChecklistSaver>();
                 services.AddScoped<IDocumentService, DocumentService>();
                 services.AddScoped<IChecklistService, ChecklistService>();
+
+                // ファクトリの登録
+                services.AddScoped<ICheckItemViewModelFactory>(sp =>
+                {
+                    var docRoot = sp.GetRequiredService<string>();
+                    var logger = sp.GetRequiredService<ILogger<CheckItemViewModelFactory>>();
+                    return new CheckItemViewModelFactory(docRoot, logger);
+                });
 
                 // UIヘルパーの登録
                 services.AddScoped<CheckItemUIBuilder>();
