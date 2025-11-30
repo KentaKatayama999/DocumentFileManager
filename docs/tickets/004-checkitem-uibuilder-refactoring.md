@@ -17,7 +17,7 @@
 | **見積時間** | 6-8時間 |
 | **実績時間** | 0.5h |
 | **作成日** | 2025-11-29 |
-| **更新日** | 2025-11-29 |
+| **更新日** | 2025-12-01 |
 | **依存チケット** | #003 |
 
 ---
@@ -50,39 +50,39 @@ CheckItemUIBuilderのGod Class問題を解消するため、ViewModel構築ロ�
 
 ## タスク一覧
 
-- [ ] **Step 1: ViewModel構築ロジック削除**
-  - [ ] `BuildViewModelHierarchy()` メソッド削除
-  - [ ] Factory呼び出しに置き換え（`_factory.CreateHierarchy()`）
-  - [ ] ViewModelファクトリをDI注入
+- [x] **Step 1: ViewModel構築ロジック削除**
+  - [x] `BuildViewModelHierarchy()` メソッド削除
+  - [x] Factory呼び出しに置き換え（`_factory.CreateHierarchy()`）
+  - [x] ViewModelファクトリをDI注入
 
-- [ ] **Step 2: コマンド設定削除**
-  - [ ] `SetupCommands()` メソッド削除
-  - [ ] MainWindow/ChecklistWindow分岐処理削除
-  - [ ] コマンドバインディングをXAML/Window側に移動
+- [x] **Step 2: コマンド設定削除**
+  - [x] `SetupCommands()` メソッド削除
+  - [x] MainWindow/ChecklistWindow分岐処理削除
+  - [x] コマンドバインディングをXAML/Window側に移動
 
-- [ ] **Step 3: ハンドラーメソッド削除**
-  - [ ] `HandleCheckOnAsync()` メソッド削除
-  - [ ] `HandleCheckOffAsync()` メソッド削除
-  - [ ] これらのロジックはWindow側で実装
+- [x] **Step 3: ハンドラーメソッド削除**
+  - [x] `HandleCheckOnAsync()` メソッド削除
+  - [x] `HandleCheckOffAsync()` メソッド削除
+  - [x] これらのロジックはWindow側で実装
 
-- [ ] **Step 4: コールバック方式廃止**
-  - [ ] `OnCaptureRequested` イベント削除
-  - [ ] `OnItemSelected` イベント削除
-  - [ ] コールバックベースの設計を廃止
+- [x] **Step 4: コールバック方式廃止**
+  - [x] `OnCaptureRequested` イベント削除
+  - [x] `OnItemSelected` イベント削除
+  - [x] コールバックベースの設計を廃止
 
-- [ ] **Step 5: UI生成メソッドのクリーンアップ**
-  - [ ] `CreateGroupBox()` メソッド整理
-  - [ ] `CreateCheckBox()` メソッド整理
-  - [ ] 不要なパラメータ削除
+- [x] **Step 5: UI生成メソッドのクリーンアップ**
+  - [x] `CreateGroupBox()` メソッド整理
+  - [x] `CreateCheckBox()` メソッド整理
+  - [x] 不要なパラメータ削除
 
-- [ ] **Step 6: ビルド・テスト実行**
-  - [ ] ビルド成功確認
-  - [ ] 既存テストの更新（CheckItemUIBuilderテスト）
-  - [ ] テストPass確認
+- [x] **Step 6: ビルド・テスト実行**
+  - [x] ビルド成功確認
+  - [x] 既存テストの更新（CheckItemUIBuilderテスト）
+  - [x] テストPass確認
 
-- [ ] **Step 7: コミット**
-  - [ ] git add, commit, push
-  - [ ] コミットメッセージ: `refactor: Phase 4完了 - CheckItemUIBuilder縮小（God Class解消）`
+- [x] **Step 7: コミット**
+  - [x] git add, commit, push
+  - [x] コミットメッセージ: `refactor: Phase 4完了 - CheckItemUIBuilder縮小（God Class解消）`
 
 ---
 
@@ -174,3 +174,4 @@ private async Task HandleCheckOnAsync(CheckItemViewModel viewModel)
 | 日時 | 変更内容 |
 |------|---------|
 | 2025-11-29 | チケット作成 |
+| 2025-12-01 | 実装完了 - CheckItemUIBuilder縮小、Factory使用に変更、SetupCommandsForHierarchy追加 |

@@ -17,7 +17,7 @@
 | **見積時間** | 4-6時間 |
 | **実績時間** | 0.5h |
 | **作成日** | 2025-11-29 |
-| **更新日** | 2025-11-29 |
+| **更新日** | 2025-12-01 |
 | **依存チケット** | #002 |
 
 ---
@@ -43,41 +43,41 @@ Factoryパターンを採用することで、ViewModel生成ロジックの再�
 
 ## タスク一覧
 
-- [ ] **Step 1: Factoryクラス作成**
-  - [ ] `Factories/CheckItemViewModelFactory.cs` 作成
-  - [ ] インターフェース定義: `ICheckItemViewModelFactory`
-  - [ ] 実装クラス: `CheckItemViewModelFactory`
+- [x] **Step 1: Factoryクラス作成**
+  - [x] `Factories/CheckItemViewModelFactory.cs` 作成
+  - [x] インターフェース定義: `ICheckItemViewModelFactory`
+  - [x] 実装クラス: `CheckItemViewModelFactory`
 
-- [ ] **Step 2: 変換メソッド実装**
-  - [ ] `Create(CheckItemEntity entity, WindowMode windowMode)` メソッド
-  - [ ] Entity → ViewModel変換ロジック
-  - [ ] CheckItemState初期化
-  - [ ] 階層構造の再現（親子関係）
+- [x] **Step 2: 変換メソッド実装**
+  - [x] `Create(CheckItemEntity entity, WindowMode windowMode)` メソッド
+  - [x] Entity → ViewModel変換ロジック
+  - [x] CheckItemState初期化
+  - [x] 階層構造の再現（親子関係）
 
-- [ ] **Step 3: 階層構造対応**
-  - [ ] `CreateHierarchy(IEnumerable<CheckItemEntity> entities, WindowMode windowMode)` メソッド
-  - [ ] ルート要素の抽出
-  - [ ] 子要素の再帰的変換
-  - [ ] ObservableCollection<CheckItemViewModel>への変換
+- [x] **Step 3: 階層構造対応**
+  - [x] `CreateHierarchy(IEnumerable<CheckItemEntity> entities, WindowMode windowMode)` メソッド
+  - [x] ルート要素の抽出
+  - [x] 子要素の再帰的変換
+  - [x] ObservableCollection<CheckItemViewModel>への変換
 
-- [ ] **Step 4: DI登録**
-  - [ ] `AppInitializer.cs`の`ConfigureServices`メソッドに追加
-  - [ ] `services.AddSingleton<ICheckItemViewModelFactory, CheckItemViewModelFactory>()`
+- [x] **Step 4: DI登録**
+  - [x] `AppInitializer.cs`の`ConfigureServices`メソッドに追加
+  - [x] `services.AddSingleton<ICheckItemViewModelFactory, CheckItemViewModelFactory>()`
 
-- [ ] **Step 5: 単体テスト作成**
-  - [ ] `CheckItemViewModelFactoryTests.cs` 作成
-  - [ ] 単一Entity変換テスト
-  - [ ] 階層構造変換テスト
-  - [ ] WindowMode別変換テスト
-  - [ ] null/空リスト処理テスト
+- [x] **Step 5: 単体テスト作成**
+  - [x] `CheckItemViewModelFactoryTests.cs` 作成
+  - [x] 単一Entity変換テスト
+  - [x] 階層構造変換テスト
+  - [x] WindowMode別変換テスト
+  - [x] null/空リスト処理テスト
 
-- [ ] **Step 6: テスト実行**
-  - [ ] すべての単体テストがPass確認
-  - [ ] ビルド成功確認
+- [x] **Step 6: テスト実行**
+  - [x] すべての単体テストがPass確認
+  - [x] ビルド成功確認
 
-- [ ] **Step 7: コミット**
-  - [ ] git add, commit, push
-  - [ ] コミットメッセージ: `feat: Phase 3完了 - CheckItemViewModelFactory作成`
+- [x] **Step 7: コミット**
+  - [x] git add, commit, push
+  - [x] コミットメッセージ: `feat: Phase 3完了 - CheckItemViewModelFactory作成`
 
 ---
 
@@ -177,3 +177,4 @@ public static IServiceProvider ConfigureServices()
 | 日時 | 変更内容 |
 |------|---------|
 | 2025-11-29 | チケット作成 |
+| 2025-12-01 | 実装完了 - CheckItemViewModelFactory作成、13テストPass、DI登録完了 |

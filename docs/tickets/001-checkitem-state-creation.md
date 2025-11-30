@@ -17,7 +17,7 @@
 | **見積時間** | 4-6時間 |
 | **実績時間** | 0.5h |
 | **作成日** | 2025-11-29 |
-| **更新日** | 2025-11-29 |
+| **更新日** | 2025-12-01 |
 | **依存チケット** | なし |
 
 ---
@@ -40,33 +40,33 @@ CheckItemUIBuilderのGod Class問題を解消するため、状態管理を担�
 
 ## タスク一覧
 
-- [ ] **Step 1: 単体テストファイル作成**
-  - [ ] `tests/DocumentFileManager.Tests/Models/CheckItemStateTests.cs` 作成
-  - [ ] MainWindow×各ItemState×CaptureFileExists組み合わせテスト
-  - [ ] ChecklistWindow×各ItemState×CaptureFileExists組み合わせテスト
-  - [ ] CameraButtonVisibility計算ロジックテスト
-  - [ ] IsCheckBoxEnabled計算ロジックテスト
+- [x] **Step 1: 単体テストファイル作成**
+  - [x] `tests/DocumentFileManager.Tests/Models/CheckItemStateTests.cs` 作成
+  - [x] MainWindow×各ItemState×CaptureFileExists組み合わせテスト
+  - [x] ChecklistWindow×各ItemState×CaptureFileExists組み合わせテスト
+  - [x] CameraButtonVisibility計算ロジックテスト
+  - [x] IsCheckBoxEnabled計算ロジックテスト
 
-- [ ] **Step 2: CheckItemStateクラス実装**
-  - [ ] WindowMode enum定義（MainWindow=0, ChecklistWindow=1）
-  - [ ] 状態パラメータ実装
-    - [ ] WindowMode プロパティ
-    - [ ] ItemState プロパティ（string型、00/10/11/20/22）
-    - [ ] CaptureFileExists プロパティ（bool型）
-  - [ ] 派生プロパティ実装
-    - [ ] CameraButtonVisibility プロパティ（Visibility型）
-      - [ ] MainWindow: CaptureFileExists==true → Visible
-      - [ ] ChecklistWindow: ItemState[1]=='1' AND CaptureFileExists==true → Visible
-    - [ ] IsCheckBoxEnabled プロパティ（bool型）
-      - [ ] WindowMode==ChecklistWindow → true
+- [x] **Step 2: CheckItemStateクラス実装**
+  - [x] WindowMode enum定義（MainWindow=0, ChecklistWindow=1）
+  - [x] 状態パラメータ実装
+    - [x] WindowMode プロパティ
+    - [x] ItemState プロパティ（string型、00/10/11/20/22）
+    - [x] CaptureFileExists プロパティ（bool型）
+  - [x] 派生プロパティ実装
+    - [x] CameraButtonVisibility プロパティ（Visibility型）
+      - [x] MainWindow: CaptureFileExists==true → Visible
+      - [x] ChecklistWindow: ItemState[1]=='1' AND CaptureFileExists==true → Visible
+    - [x] IsCheckBoxEnabled プロパティ（bool型）
+      - [x] WindowMode==ChecklistWindow → true
 
-- [ ] **Step 3: テスト実行・Green確認**
-  - [ ] すべての単体テストがPassすることを確認
-  - [ ] テストカバレッジ100%を確認
+- [x] **Step 3: テスト実行・Green確認**
+  - [x] すべての単体テストがPassすることを確認
+  - [x] テストカバレッジ100%を確認
 
-- [ ] **Step 4: コミット**
-  - [ ] git add, commit, push
-  - [ ] コミットメッセージ: `feat: Phase 1完了 - CheckItemState作成（TDD）`
+- [x] **Step 4: コミット**
+  - [x] git add, commit, push
+  - [x] コミットメッセージ: `feat: Phase 1完了 - CheckItemState作成（TDD）`
 
 ---
 
@@ -119,3 +119,4 @@ CheckItemUIBuilderのGod Class問題を解消するため、状態管理を担�
 | 日時 | 変更内容 |
 |------|---------|
 | 2025-11-29 | チケット作成 |
+| 2025-12-01 | 実装完了 - CheckItemState作成、33テストPass |

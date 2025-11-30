@@ -17,7 +17,7 @@
 | **見積時間** | 4-6時間 |
 | **実績時間** | 0.5h |
 | **作成日** | 2025-11-29 |
-| **更新日** | 2025-11-29 |
+| **更新日** | 2025-12-01 |
 | **依存チケット** | #001 |
 
 ---
@@ -42,39 +42,39 @@ CheckItemViewModelに`CheckItemState`プロパティを追加し、派生プロ�
 
 ## タスク一覧
 
-- [ ] **Step 1: CheckItemStateプロパティ追加**
-  - [ ] `public CheckItemState State { get; private set; }` プロパティ追加
-  - [ ] コンストラクタで初期化
+- [x] **Step 1: CheckItemStateプロパティ追加**
+  - [x] `public CheckItemState State { get; private set; }` プロパティ追加
+  - [x] コンストラクタで初期化
 
-- [ ] **Step 2: ファイル存在チェック最適化**
-  - [ ] コンストラクタで `File.Exists(CaptureFilePath)` を1回実行
-  - [ ] 結果を `CheckItemState.CaptureFileExists` に設定
-  - [ ] getter内の `File.Exists()` 呼び出しを削除
+- [x] **Step 2: ファイル存在チェック最適化**
+  - [x] コンストラクタで `File.Exists(CaptureFilePath)` を1回実行
+  - [x] 結果を `CheckItemState.CaptureFileExists` に設定
+  - [x] getter内の `File.Exists()` 呼び出しを削除
 
-- [ ] **Step 3: 派生プロパティの委譲**
-  - [ ] `CameraButtonVisibility` getter を `State.CameraButtonVisibility` に委譲
-  - [ ] `IsCheckBoxEnabled` getter を `State.IsCheckBoxEnabled` に委譲
-  - [ ] 既存プロパティとの互換性維持（INotifyPropertyChangedは維持）
+- [x] **Step 3: 派生プロパティの委譲**
+  - [x] `CameraButtonVisibility` getter を `State.CameraButtonVisibility` に委譲
+  - [x] `IsCheckBoxEnabled` getter を `State.IsCheckBoxEnabled` に委譲
+  - [x] 既存プロパティとの互換性維持（INotifyPropertyChangedは維持）
 
-- [ ] **Step 4: 状態更新メソッド追加**
-  - [ ] `UpdateItemState(string newItemState)` メソッド追加
-  - [ ] `UpdateCaptureFileExists(bool exists)` メソッド追加
-  - [ ] PropertyChanged通知を適切に発火
+- [x] **Step 4: 状態更新メソッド追加**
+  - [x] `UpdateItemState(string newItemState)` メソッド追加
+  - [x] `UpdateCaptureFileExists(bool exists)` メソッド追加
+  - [x] PropertyChanged通知を適切に発火
 
-- [ ] **Step 5: テスト更新**
-  - [ ] 既存テストを更新（CheckItemState導入に対応）
-  - [ ] 新規テストケース追加
-    - [ ] State初期化テスト
-    - [ ] 派生プロパティ委譲テスト
-    - [ ] 状態更新メソッドテスト
+- [x] **Step 5: テスト更新**
+  - [x] 既存テストを更新（CheckItemState導入に対応）
+  - [x] 新規テストケース追加
+    - [x] State初期化テスト
+    - [x] 派生プロパティ委譲テスト
+    - [x] 状態更新メソッドテスト
 
-- [ ] **Step 6: ビルド・テスト実行**
-  - [ ] ビルド成功確認
-  - [ ] すべてのテストがPass確認
+- [x] **Step 6: ビルド・テスト実行**
+  - [x] ビルド成功確認
+  - [x] すべてのテストがPass確認
 
-- [ ] **Step 7: コミット**
-  - [ ] git add, commit, push
-  - [ ] コミットメッセージ: `refactor: Phase 2完了 - CheckItemViewModel修正（State導入）`
+- [x] **Step 7: コミット**
+  - [x] git add, commit, push
+  - [x] コミットメッセージ: `refactor: Phase 2完了 - CheckItemViewModel修正（State導入）`
 
 ---
 
@@ -154,3 +154,4 @@ public void UpdateItemState(string newItemState)
 | 日時 | 変更内容 |
 |------|---------|
 | 2025-11-29 | チケット作成 |
+| 2025-12-01 | 実装完了 - CheckItemViewModel修正、既存33テストPass |
