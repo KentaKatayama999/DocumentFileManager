@@ -258,8 +258,11 @@ public class CheckItemUIBuilder
         }
 
         // 状態遷移後のViewModelを更新
+        // CaptureFilePathのセッターがUpdateCaptureFileExistsFromPath()を呼び出すが、
+        // ファイルシステムI/Oの遅延があるため、明示的にItemStateとCaptureFileExistsを先に設定
+        viewModel.UpdateItemState(transition.TargetState);
+        viewModel.UpdateCaptureFileExists(!string.IsNullOrEmpty(transition.CaptureFile));
         viewModel.CaptureFilePath = transition.CaptureFile;
-        viewModel.UpdateCaptureButton();
 
         // DBにコミット
         await _stateManager.CommitTransitionAsync(transition);
@@ -287,7 +290,10 @@ public class CheckItemUIBuilder
     {
         var transition = await _stateManager.HandleCheckOffAsync(viewModel, _currentDocument!);
         await _stateManager.CommitTransitionAsync(transition);
-        viewModel.UpdateCaptureButton();
+
+        // ItemStateを更新（UIへの即座反映）
+        // UpdateItemState内でCameraButtonVisibility通知も発生するためUpdateCaptureButton()は不要
+        viewModel.UpdateItemState(transition.TargetState);
     }
 
     /// <summary>

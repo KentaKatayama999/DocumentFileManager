@@ -1075,13 +1075,27 @@ public partial class ChecklistWindow : Window
                             _logger.LogInformation("キャプチャ画像を保存: {Path}", relativePath);
 
                             // ViewModelを更新（UIスレッドで確実に実行）
+                            // 順序: ItemState → CaptureFileExists → CaptureFilePath → IsChecked
+                            // ・ItemStateを先に設定することで、IsCheckedのセッター副作用と競合しない
+                            // ・CaptureFileExistsを先に設定することで、ファイルI/O遅延の影響を回避
                             await Dispatcher.InvokeAsync(() =>
                             {
+                                // State.ItemStateを明示的に"11"（チェックON + キャプチャあり）に設定
+                                viewModel.UpdateItemState("11");
+
+                                // ファイルシステムの遅延対策：明示的に存在フラグをTrueにする
+                                viewModel.UpdateCaptureFileExists(true);
+
+                                // パスを設定（セッター内でUpdateCaptureFileExistsFromPathが呼ばれるが、
+                                // 既に状態は確定しているので問題なし）
                                 viewModel.CaptureFilePath = relativePath;
+
+                                // チェック状態を更新（セッター内でUpdateItemStateFromCheckStateが呼ばれるが、
+                                // 既にItemStateは"11"に設定済みなので変更されない）
                                 viewModel.IsChecked = true;
-                                viewModel.UpdateCaptureButton(); // CameraButtonVisibilityを更新
-                                _logger.LogDebug("ViewModel更新完了: CaptureFilePath={Path}, IsChecked={IsChecked}, CameraButtonVisibility={Visibility}",
-                                    viewModel.CaptureFilePath, viewModel.IsChecked, viewModel.CameraButtonVisibility);
+
+                                _logger.LogDebug("ViewModel更新完了: CaptureFilePath={Path}, IsChecked={IsChecked}, ItemState={ItemState}, CameraButtonVisibility={Visibility}",
+                                    viewModel.CaptureFilePath, viewModel.IsChecked, viewModel.State.ItemState, viewModel.CameraButtonVisibility);
                             });
 
                             // DBを更新

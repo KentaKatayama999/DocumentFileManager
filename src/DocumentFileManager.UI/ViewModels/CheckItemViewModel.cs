@@ -276,7 +276,7 @@ public class CheckItemViewModel : INotifyPropertyChanged
             fileExists = File.Exists(absolutePath);
         }
 
-        State.CaptureFileExists = fileExists;
+        UpdateCaptureFileExists(fileExists);
 
         // ItemStateのキャプチャ状態部分も更新
         UpdateItemStateCaptureFlag(fileExists);
@@ -292,12 +292,12 @@ public class CheckItemViewModel : INotifyPropertyChanged
         if (currentCheckState == '1')
         {
             // チェックON状態: 10 or 11
-            State.ItemState = hasCapture ? "11" : "10";
+            UpdateItemState(hasCapture ? "11" : "10");
         }
         else if (currentCheckState == '2')
         {
             // チェックOFF（履歴あり）: 20 or 22
-            State.ItemState = hasCapture ? "22" : "20";
+            UpdateItemState(hasCapture ? "22" : "20");
         }
         // currentCheckState == '0' の場合は未紐づけなので変更しない
     }
@@ -313,12 +313,12 @@ public class CheckItemViewModel : INotifyPropertyChanged
         if (_isChecked)
         {
             // チェックON: 10 or 11
-            State.ItemState = hasCapture ? "11" : "10";
+            UpdateItemState(hasCapture ? "11" : "10");
         }
         else
         {
             // チェックOFF: 20 or 22
-            State.ItemState = hasCapture ? "22" : "20";
+            UpdateItemState(hasCapture ? "22" : "20");
         }
     }
 
