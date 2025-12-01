@@ -87,24 +87,48 @@ public class CheckItemUIBuilder
         var rootItems = await _repository.GetRootItemsAsync();
         _logger.LogInformation("{Count} 件のルート項目を取得しました", rootItems.Count);
 
-        // Documentと紐づいたチェック項目を取得
+        // 全ドキュメント横断で各チェック項目の最新キャプチャを取得（MainWindow/ChecklistWindow共通）
+        var allLinkedItems = await _checkItemDocumentRepository.GetAllAsync();
+        var latestCaptures = allLinkedItems
+            .Where(x => x.CaptureFile != null)
+            .GroupBy(x => x.CheckItemId)
+            .Select(g => g.OrderByDescending(x => x.LinkedAt).First())
+            .ToDictionary(x => x.CheckItemId);
+        _logger.LogInformation("{Count} 件のチェック項目に最新キャプチャがあります", latestCaptures.Count);
+
+        // ChecklistWindowの場合：現在のドキュメントとの紐づけ情報も取得（チェック状態判定用）
         Dictionary<int, CheckItemDocument>? checkItemDocuments = null;
         if (document != null)
         {
             var linkedItems = await _checkItemDocumentRepository.GetByDocumentIdAsync(document.Id);
-            checkItemDocuments = linkedItems.ToDictionary(x => x.CheckItemId);
-            _logger.LogInformation("{Count} 件の紐づけデータを取得しました", linkedItems.Count);
+            // 現在のドキュメントの紐づけ情報をベースに、キャプチャは最新のものを使用
+            checkItemDocuments = new Dictionary<int, CheckItemDocument>();
+            foreach (var item in linkedItems)
+            {
+                // 最新キャプチャがあればそれを使用、なければ現在のドキュメントの情報をそのまま使用
+                if (latestCaptures.TryGetValue(item.CheckItemId, out var latestCapture))
+                {
+                    // 紐づけ情報は現在のドキュメントのもの、キャプチャは最新のものを合成
+                    checkItemDocuments[item.CheckItemId] = new CheckItemDocument
+                    {
+                        Id = item.Id,
+                        CheckItemId = item.CheckItemId,
+                        DocumentId = item.DocumentId,
+                        LinkedAt = item.LinkedAt,
+                        CaptureFile = latestCapture.CaptureFile  // 最新キャプチャを使用
+                    };
+                }
+                else
+                {
+                    checkItemDocuments[item.CheckItemId] = item;
+                }
+            }
+            _logger.LogInformation("{Count} 件の紐づけデータを取得しました（キャプチャは最新を使用）", linkedItems.Count);
         }
         else
         {
-            // MainWindow（全体表示）の場合：各チェック項目の最新キャプチャを取得
-            var allLinkedItems = await _checkItemDocumentRepository.GetAllAsync();
-            checkItemDocuments = allLinkedItems
-                .Where(x => x.CaptureFile != null)
-                .GroupBy(x => x.CheckItemId)
-                .Select(g => g.OrderByDescending(x => x.LinkedAt).First())
-                .ToDictionary(x => x.CheckItemId);
-            _logger.LogInformation("全体表示モード：{Count} 件のチェック項目に最新キャプチャがあります", checkItemDocuments.Count);
+            // MainWindow（全体表示）の場合：最新キャプチャのみ使用
+            checkItemDocuments = latestCaptures;
         }
 
         // ViewModelに変換（Factoryを使用）
