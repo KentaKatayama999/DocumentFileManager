@@ -219,9 +219,13 @@ public class CheckItemUIBuilder
             // 削除された場合はViewModelを更新
             if (viewer.IsDeleted)
             {
-                // CaptureFilePathのセッター内でCameraButtonVisibility通知が発火するため
-                // UpdateCaptureButton()は不要
-                viewModel.CaptureFilePath = null;
+                _logger.LogInformation("キャプチャ画像削除を検知: ViewModelを更新します");
+
+                // UIスレッドでViewModelを更新（PropertyChanged通知が確実にUIに届くように）
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                {
+                    viewModel.CaptureFilePath = null;
+                });
 
                 // DB更新
                 if (_currentDocument != null)
