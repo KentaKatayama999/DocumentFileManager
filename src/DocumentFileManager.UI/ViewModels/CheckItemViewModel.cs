@@ -18,6 +18,7 @@ public class CheckItemViewModel : INotifyPropertyChanged
 {
     private bool _isChecked;
     private string? _captureFilePath;
+    private bool _isLinkedToCurrentDocument;
 
     /// <summary>状態管理オブジェクト</summary>
     public CheckItemState State { get; private set; }
@@ -83,6 +84,24 @@ public class CheckItemViewModel : INotifyPropertyChanged
 
     /// <summary>キャプチャ画像が存在するかどうか</summary>
     public bool HasCapture => !string.IsNullOrEmpty(_captureFilePath);
+
+    /// <summary>現在のドキュメントと紐づいているかどうか</summary>
+    /// <remarks>
+    /// ChecklistWindowで、このチェック項目が現在開いているドキュメントと紐づいている場合true。
+    /// 文字色の強調表示に使用。
+    /// </remarks>
+    public bool IsLinkedToCurrentDocument
+    {
+        get => _isLinkedToCurrentDocument;
+        set
+        {
+            if (_isLinkedToCurrentDocument != value)
+            {
+                _isLinkedToCurrentDocument = value;
+                OnPropertyChanged();
+            }
+        }
+    }
 
     /// <summary>子要素のコレクション</summary>
     public ObservableCollection<CheckItemViewModel> Children { get; }

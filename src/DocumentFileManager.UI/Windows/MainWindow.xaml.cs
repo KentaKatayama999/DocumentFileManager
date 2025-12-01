@@ -1185,7 +1185,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 資料に紐づくチェック項目をハイライト
+    /// 資料に紐づくチェック項目をハイライト（最新の紐づけのみ）
     /// </summary>
     private async Task HighlightCheckItemsByDocument(Document document)
     {
@@ -1194,13 +1194,20 @@ public partial class MainWindow : Window
             // 前回のハイライトをクリア
             ClearCheckItemHighlights();
 
-            // 資料に紐づくチェック項目を取得
+            // 全ドキュメントの紐づけを取得して、最新紐づけが現在のドキュメントであるチェック項目を特定
             var checkItemDocumentRepo = _serviceProvider.GetRequiredService<ICheckItemDocumentRepository>();
-            var linkedItems = await checkItemDocumentRepo.GetByDocumentIdAsync(document.Id);
-            var checkItemIds = linkedItems.Select(x => x.CheckItemId).ToHashSet();
+            var allLinkedItems = await checkItemDocumentRepo.GetAllAsync();
 
-            // ハイライト（薄い黄色）- チェックONの項目のみ
-            foreach (var checkItemId in checkItemIds)
+            // 各チェック項目の最新紐づけドキュメントを取得し、現在のドキュメントが最新のもののみを抽出
+            var latestLinkedCheckItemIds = allLinkedItems
+                .GroupBy(x => x.CheckItemId)
+                .Select(g => new { CheckItemId = g.Key, LatestDocumentId = g.OrderByDescending(x => x.LinkedAt).First().DocumentId })
+                .Where(x => x.LatestDocumentId == document.Id)
+                .Select(x => x.CheckItemId)
+                .ToHashSet();
+
+            // ハイライト（薄い黄色）- チェックON かつ 最新紐づけの項目のみ
+            foreach (var checkItemId in latestLinkedCheckItemIds)
             {
                 if (_checkItemUIElements.TryGetValue(checkItemId, out var element))
                 {
@@ -1212,7 +1219,7 @@ public partial class MainWindow : Window
                 }
             }
 
-            _logger.LogInformation("資料 '{FileName}' に紐づく {Count} 件のチェック項目をハイライトしました", document.FileName, checkItemIds.Count);
+            _logger.LogInformation("資料 '{FileName}' に紐づく {Count} 件のチェック項目をハイライトしました（最新紐づけのみ）", document.FileName, latestLinkedCheckItemIds.Count);
         }
         catch (Exception ex)
         {

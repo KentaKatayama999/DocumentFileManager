@@ -101,11 +101,21 @@ public class CheckItemUIBuilder
         if (document != null)
         {
             var linkedItems = await _checkItemDocumentRepository.GetByDocumentIdAsync(document.Id);
-            // 現在のドキュメントの紐づけ情報をベースに、キャプチャは最新のものを使用
+            var linkedItemsDict = linkedItems.ToDictionary(x => x.CheckItemId);
+
+            // 最新キャプチャをベースにして、現在のドキュメントの紐づけ情報をマージ
+            // これにより、どのドキュメントでキャプチャされたかに関係なくカメラアイコンが表示される
             checkItemDocuments = new Dictionary<int, CheckItemDocument>();
+
+            // まず最新キャプチャを全て追加
+            foreach (var kvp in latestCaptures)
+            {
+                checkItemDocuments[kvp.Key] = kvp.Value;
+            }
+
+            // 現在のドキュメントに紐づいている項目は、紐づけ情報を上書き（キャプチャは最新を維持）
             foreach (var item in linkedItems)
             {
-                // 最新キャプチャがあればそれを使用、なければ現在のドキュメントの情報をそのまま使用
                 if (latestCaptures.TryGetValue(item.CheckItemId, out var latestCapture))
                 {
                     // 紐づけ情報は現在のドキュメントのもの、キャプチャは最新のものを合成
@@ -134,6 +144,20 @@ public class CheckItemUIBuilder
         // ViewModelに変換（Factoryを使用）
         var windowMode = document == null ? WindowMode.MainWindow : WindowMode.ChecklistWindow;
         var viewModels = _viewModelFactory.CreateHierarchy(rootItems, windowMode, checkItemDocuments);
+
+        // ChecklistWindowの場合：最新の紐づけが現在のドキュメントであるチェック項目にフラグを設定
+        if (document != null)
+        {
+            // 各チェック項目の最新紐づけドキュメントを取得
+            var latestLinkedDocumentIds = allLinkedItems
+                .GroupBy(x => x.CheckItemId)
+                .Select(g => new { CheckItemId = g.Key, LatestDocumentId = g.OrderByDescending(x => x.LinkedAt).First().DocumentId })
+                .Where(x => x.LatestDocumentId == document.Id)
+                .Select(x => x.CheckItemId)
+                .ToHashSet();
+
+            SetLinkedToCurrentDocumentFlag(viewModels, latestLinkedDocumentIds);
+        }
 
         // コマンドを設定
         SetupCommandsForHierarchy(viewModels);
@@ -295,6 +319,11 @@ public class CheckItemUIBuilder
 
         // DBにコミット
         await _stateManager.CommitTransitionAsync(transition);
+
+        // 最新の紐づけが現在のドキュメントかどうかを確認して色を設定
+        // 復帰の場合はLinkedAtが更新されないため、現在のドキュメントが最新とは限らない
+        var isLatestLink = await IsLatestLinkAsync(viewModel.Id);
+        viewModel.IsLinkedToCurrentDocument = isLatestLink;
 
         // キャプチャがない場合、キャプチャ取得を促す
         if (string.IsNullOrEmpty(transition.CaptureFile) && OnCaptureRequested != null)
@@ -465,4 +494,46 @@ public class CheckItemUIBuilder
     /// documentRootPathを取得する（テスト用）
     /// </summary>
     public string DocumentRootPath => _documentRootPath;
+
+    /// <summary>
+    /// 現在のドキュメントと紐づいているチェック項目にフラグを設定する
+    /// </summary>
+    /// <param name="viewModels">ViewModel階層</param>
+    /// <param name="linkedCheckItemIds">現在のドキュメントに紐づいているチェック項目IDのセット</param>
+    private void SetLinkedToCurrentDocumentFlag(List<CheckItemViewModel> viewModels, HashSet<int> linkedCheckItemIds)
+    {
+        foreach (var viewModel in viewModels)
+        {
+            if (viewModel.IsItem)
+            {
+                // チェック項目の場合：現在のドキュメントとの紐づけを確認
+                viewModel.IsLinkedToCurrentDocument = linkedCheckItemIds.Contains(viewModel.Id);
+            }
+
+            // 子要素も再帰的に処理
+            if (viewModel.Children.Count > 0)
+            {
+                SetLinkedToCurrentDocumentFlag(viewModel.Children.ToList(), linkedCheckItemIds);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 指定したチェック項目について、現在のドキュメントが最新の紐づけかどうかを確認
+    /// </summary>
+    private async Task<bool> IsLatestLinkAsync(int checkItemId)
+    {
+        if (_currentDocument == null)
+        {
+            return false;
+        }
+
+        var allLinkedItems = await _checkItemDocumentRepository.GetAllAsync();
+        var latestLink = allLinkedItems
+            .Where(x => x.CheckItemId == checkItemId)
+            .OrderByDescending(x => x.LinkedAt)
+            .FirstOrDefault();
+
+        return latestLink?.DocumentId == _currentDocument.Id;
+    }
 }

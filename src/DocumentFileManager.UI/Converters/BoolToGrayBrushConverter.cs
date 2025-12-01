@@ -57,3 +57,30 @@ public class BoolToBackgroundBrushConverter : IValueConverter
         throw new NotImplementedException();
     }
 }
+
+/// <summary>
+/// bool値を前景Brushに変換するコンバーター
+/// IsLinkedToCurrentDocument=trueの場合にハイライト色を返す
+/// </summary>
+public class BoolToLinkedForegroundConverter : IValueConverter
+{
+    /// <summary>通常時の色（デフォルト: 黒）</summary>
+    public Brush NormalBrush { get; set; } = Brushes.Black;
+
+    /// <summary>紐づき時の色（デフォルト: 濃い青）</summary>
+    public Brush LinkedBrush { get; set; } = new SolidColorBrush(Color.FromRgb(0, 102, 204)); // #0066CC
+
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is bool isLinked)
+        {
+            return isLinked ? LinkedBrush : NormalBrush;
+        }
+        return NormalBrush;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}

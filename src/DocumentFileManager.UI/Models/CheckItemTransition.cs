@@ -115,7 +115,7 @@ public class CheckItemTransition
     }
 
     /// <summary>
-    /// 既存のキャプチャを復帰して11に遷移
+    /// 既存のキャプチャを復帰して11に遷移（現在のドキュメントのキャプチャ）
     /// </summary>
     public void RestoreTo11()
     {
@@ -125,6 +125,17 @@ public class CheckItemTransition
             IsChecked = true;
             CaptureFile = OriginalRecord.CaptureFile;
         }
+    }
+
+    /// <summary>
+    /// 指定したキャプチャを使用して11に遷移（他のドキュメントのキャプチャを復帰する場合）
+    /// </summary>
+    /// <param name="captureFilePath">復帰するキャプチャファイルパス</param>
+    public void RestoreTo11WithCapture(string captureFilePath)
+    {
+        TargetState = "11";
+        IsChecked = true;
+        CaptureFile = captureFilePath;
     }
 
     /// <summary>
