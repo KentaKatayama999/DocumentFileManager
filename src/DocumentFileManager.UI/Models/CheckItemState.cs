@@ -55,7 +55,6 @@ public class CheckItemState : INotifyPropertyChanged
             {
                 _itemState = value;
                 OnPropertyChanged();
-                OnPropertyChanged(nameof(CameraButtonVisibility));
             }
         }
     }
@@ -72,7 +71,6 @@ public class CheckItemState : INotifyPropertyChanged
             {
                 _captureFileExists = value;
                 OnPropertyChanged();
-                OnPropertyChanged(nameof(CameraButtonVisibility));
             }
         }
     }
@@ -98,34 +96,6 @@ public class CheckItemState : INotifyPropertyChanged
     /// ChecklistWindow: 有効（編集可能）
     /// </remarks>
     public bool IsCheckBoxEnabled => WindowMode == WindowMode.ChecklistWindow;
-
-    /// <summary>
-    /// カメラボタンの表示状態
-    /// </summary>
-    /// <remarks>
-    /// MainWindow: CaptureFileExists==true → Visible
-    /// ChecklistWindow: ItemState[1]=='1' AND CaptureFileExists==true → Visible
-    /// </remarks>
-    public Visibility CameraButtonVisibility
-    {
-        get
-        {
-            // キャプチャファイルが存在しなければ非表示
-            if (!CaptureFileExists)
-                return Visibility.Collapsed;
-
-            // MainWindowモードの場合、キャプチャがあれば常に表示
-            if (WindowMode == WindowMode.MainWindow)
-                return Visibility.Visible;
-
-            // ChecklistWindowモードの場合、ItemState[1]=='1'の場合のみ表示
-            // ItemState[1]はキャプチャ状態を示す（0:なし, 1:チェックONでキャプチャあり, 2:チェックOFFでキャプチャあり）
-            if (_itemState != null && _itemState.Length >= 2 && _itemState[1] == '1')
-                return Visibility.Visible;
-
-            return Visibility.Collapsed;
-        }
-    }
 
     /// <summary>
     /// PropertyChanged イベント

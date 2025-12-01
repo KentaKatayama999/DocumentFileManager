@@ -108,9 +108,19 @@ public class CheckItemViewModel : INotifyPropertyChanged
     /// <remarks>
     /// MainWindowモード: キャプチャがあれば表示（IsCheckedに関係なく）
     /// ChecklistWindowモード: チェックON かつ キャプチャがある場合のみ表示
-    /// 計算ロジックはCheckItemStateに委譲
     /// </remarks>
-    public Visibility CameraButtonVisibility => State.CameraButtonVisibility;
+    public Visibility CameraButtonVisibility
+    {
+        get
+        {
+            // 1. キャプチャがなければ問答無用で非表示
+            if (!HasCapture) return Visibility.Collapsed;
+
+            // 2. チェックON かつ キャプチャがある場合のみ表示
+            // (MainWindow/ChecklistWindow 共通の挙動に変更)
+            return IsChecked ? Visibility.Visible : Visibility.Collapsed;
+        }
+    }
 
     /// <summary>
     /// キャプチャの絶対パスを取得
@@ -180,15 +190,6 @@ public class CheckItemViewModel : INotifyPropertyChanged
         }
     }
 
-    /// <summary>
-    /// キャプチャボタンの表示状態を更新する
-    /// </summary>
-    public void UpdateCaptureButton()
-    {
-        OnPropertyChanged(nameof(HasCapture));
-        OnPropertyChanged(nameof(CameraButtonVisibility));
-    }
-
     #endregion
 
     /// <summary>
@@ -243,7 +244,7 @@ public class CheckItemViewModel : INotifyPropertyChanged
         {
             State.ItemState = newItemState;
             OnPropertyChanged(nameof(State));
-            OnPropertyChanged(nameof(CameraButtonVisibility));
+            // CameraButtonVisibilityはItemStateに依存しなくなったため通知不要
         }
     }
 
@@ -256,7 +257,7 @@ public class CheckItemViewModel : INotifyPropertyChanged
         {
             State.CaptureFileExists = exists;
             OnPropertyChanged(nameof(State));
-            OnPropertyChanged(nameof(CameraButtonVisibility));
+            // CameraButtonVisibilityはCaptureFileExists(State)ではなくCaptureFilePath(ViewModel)に依存するため通知不要
         }
     }
 

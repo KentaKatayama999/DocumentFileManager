@@ -235,29 +235,14 @@ public partial class ChecklistWindow : Window
         // ウィンドウが閉じられたときに資料ウィンドウも閉じる
         Closed += ChecklistWindow_Closed;
 
-        // ウィンドウがアクティブになったときにチェック項目を再読み込み
-        Activated += ChecklistWindow_Activated;
+
 
         _logger.LogInformation("ChecklistWindow が初期化されました (Document: {FileName})", _document.FileName);
     }
 
-    private bool _isFirstActivation = true;
 
-    /// <summary>
-    /// ウィンドウがアクティブになったときの処理
-    /// </summary>
-    private async void ChecklistWindow_Activated(object? sender, EventArgs e)
-    {
-        // 初回アクティベーションはスキップ（ChecklistWindow_Loadedで読み込み済み）
-        if (_isFirstActivation)
-        {
-            _isFirstActivation = false;
-            return;
-        }
 
-        // チェック項目を再読み込み
-        await RefreshCheckItemsAsync();
-    }
+
 
     #endregion
 

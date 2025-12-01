@@ -219,8 +219,9 @@ public class CheckItemUIBuilder
             // 削除された場合はViewModelを更新
             if (viewer.IsDeleted)
             {
+                // CaptureFilePathのセッター内でCameraButtonVisibility通知が発火するため
+                // UpdateCaptureButton()は不要
                 viewModel.CaptureFilePath = null;
-                viewModel.UpdateCaptureButton();
 
                 // DB更新
                 if (_currentDocument != null)
@@ -291,8 +292,7 @@ public class CheckItemUIBuilder
         var transition = await _stateManager.HandleCheckOffAsync(viewModel, _currentDocument!);
         await _stateManager.CommitTransitionAsync(transition);
 
-        // ItemStateを更新（UIへの即座反映）
-        // UpdateItemState内でCameraButtonVisibility通知も発生するためUpdateCaptureButton()は不要
+        // ItemStateを更新（DB保存用の状態コード管理）
         viewModel.UpdateItemState(transition.TargetState);
     }
 
