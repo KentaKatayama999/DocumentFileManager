@@ -1,4 +1,4 @@
-# チケット #005 - Window側コマンド設定実装
+# チケット #005 - Window側コマンド設定実装（将来検討）
 
 > **📖 実装前に必ず確認**: [チケット管理ガイド](~/.claude/docs/tickets/README.md) を参照してください。
 > ワークフロー、Review Agent活用、ステータス管理ルールが記載されています。
@@ -10,9 +10,9 @@
 | 項目 | 内容 |
 |-----|------|
 | **チケット番号** | #005 |
-| **タイトル** | Window側コマンド設定実装 |
+| **タイトル** | Window側コマンド設定実装（将来検討） |
 | **ステータス** | Deferred |
-| **優先度** | Medium |
+| **優先度** | Low |
 | **担当者** | 未割当 |
 | **見積時間** | 6-8時間 |
 | **実績時間** | - |
@@ -24,28 +24,50 @@
 
 ## 説明
 
-CheckItemUIBuilderから削除したコマンド設定とイベントハンドリングをWindow側（MainWindow, ChecklistWindow）に実装します。
+CheckItemUIBuilderからコマンド設定とイベントハンドリングをWindow側（MainWindow, ChecklistWindow）に完全移動する将来的なリファクタリング案です。
 
-これにより、各Windowが自身の責務（ユーザー操作の処理）を明確に持つようになり、コールバックベースの複雑な設計を廃止できます。
+**現状**: コマンド設定は`CheckItemUIBuilder.SetupCommandsForHierarchy()`で一元管理されており、動作に問題はありません。
+
+---
 
 ## 延期理由
 
 **ステータス: Deferred（延期）**
 
-当初計画していたWindow側への完全なコマンド設定移動は、以下の理由により延期することになりました：
+以下の理由により、本チケットは将来検討として延期されました：
 
-1. **現在の実装で動作に問題なし**: チケット#004で実装した`SetupCommandsForHierarchy`メソッドにより、コマンド設定は適切に機能しています
-2. **大規模変更のリスク**: Window側への完全移動は、MainWindow/ChecklistWindow双方に大きな変更を伴い、リグレッションリスクが高い
-3. **段階的リファクタリング戦略**: 現状の実装でGod Class問題は解消されており、更なる改善は後続フェーズで検討可能
+1. **現在の実装で動作に問題なし**
+   - チケット#004で実装した`SetupCommandsForHierarchy`メソッドでコマンド設定が適切に機能
+   - ハンドラーメソッド（`HandleCheckOnAsync`, `HandleCheckOffAsync`）も正常動作
 
-**実施済みの代替実装**:
-- CheckItemUIBuilderに`SetupCommandsForHierarchy`メソッド追加
-- コマンド設定ロジックを整理し、保守性を向上
-- Factory使用により責務分離を達成
+2. **大規模変更のリスク**
+   - Window側への完全移動はMainWindow/ChecklistWindow双方に大きな変更を伴う
+   - リグレッションリスクが高い
 
-**今後の方針**:
-- 本チケットは後続実装予定としてバックログに保持
-- 必要性が確認された時点で再実装を検討
+3. **段階的リファクタリング戦略**
+   - #004でFactory導入・DataTemplate移行・コマンド集約を達成
+   - 更なる分離は必要性が確認された時点で検討
+
+---
+
+## 現在の実装状況
+
+### CheckItemUIBuilder内に維持されている機能
+
+| 機能 | メソッド | 説明 |
+|-----|---------|-----|
+| コマンド設定 | `SetupCommandsForHierarchy()` | 階層構造を走査してコマンド設定 |
+| コマンド設定 | `SetupCommands()` | 個別ViewModelへのコマンド設定 |
+| チェックON | `HandleCheckOnAsync()` | 状態遷移処理 |
+| チェックOFF | `HandleCheckOffAsync()` | 状態遷移処理 |
+| コールバック | `OnCaptureRequested` | キャプチャ要求時の通知 |
+| コールバック | `OnItemSelected` | 選択時の通知（MainWindow用） |
+
+### これらが動作している理由
+
+- `ChecklistStateManager`を活用して状態遷移ロジックを分離済み
+- ViewModelの`UpdateItemState()`で状態更新とUI反映が連携
+- DataTemplateバインディングでUIが自動更新
 
 ---
 
@@ -113,30 +135,27 @@ CheckItemUIBuilderから削除したコマンド設定とイベントハンド�
 
 ## 受け入れ条件（Acceptance Criteria）
 
-- [x] MainWindowに以下が実装されている：
-  - [x] SelectCommand（チェック項目クリック処理）
-  - [x] ViewCaptureCommand（キャプチャ表示処理）
+**注意**: 本チケットは延期されているため、以下は将来実装時の条件です。
 
-- [x] ChecklistWindowに以下が実装されている：
-  - [x] CheckedChangedCommand（チェックON/OFF処理）
-  - [x] ViewCaptureCommand（キャプチャ表示処理）
-  - [x] HandleCheckOnAsync()（チェックONハンドラー）
-  - [x] HandleCheckOffAsync()（チェックOFFハンドラー）
+- [ ] MainWindowにコマンド設定が移動されている：
+  - [ ] SelectCommand（チェック項目クリック処理）
+  - [ ] ViewCaptureCommand（キャプチャ表示処理）
 
-- [x] コールバック方式が廃止されている：
-  - [x] OnCaptureRequested削除
-  - [x] OnItemSelected削除
+- [ ] ChecklistWindowにコマンド設定とハンドラーが移動されている：
+  - [ ] CheckedChangedCommand（チェックON/OFF処理）
+  - [ ] ViewCaptureCommand（キャプチャ表示処理）
+  - [ ] HandleCheckOnAsync()（チェックONハンドラー）
+  - [ ] HandleCheckOffAsync()（チェックOFFハンドラー）
 
-- [x] ビルドが成功している（警告なし）
+- [ ] コールバック方式が廃止されている：
+  - [ ] CheckItemUIBuilderからOnCaptureRequested削除
+  - [ ] CheckItemUIBuilderからOnItemSelected削除
 
-- [x] 動作確認が完了している：
-  - [x] MainWindow: チェック項目クリックで資料フィルタリング
-  - [x] ChecklistWindow: チェックON/OFF→DB保存
-  - [x] 両Window: キャプチャボタンで画像表示
+- [ ] CheckItemUIBuilderが200行以下に縮小している
 
 ---
 
-## 技術メモ
+## 技術メモ（将来実装時の参考）
 
 ### コマンド設定のタイミング
 
@@ -230,4 +249,5 @@ viewModel.CheckedChangedCommand = new RelayCommand<bool>(
 | 日時 | 変更内容 |
 |------|---------|
 | 2025-11-29 | チケット作成 |
-| 2025-12-01 | ステータス変更: Review → Deferred - Window側完全移動は後続実装予定 |
+| 2025-12-01 | ステータス変更: Open → Deferred - 段階的リファクタリング戦略により延期 |
+| 2025-12-01 | ドキュメント修正 - 受け入れ条件を未完了に修正、現状説明を追加 |

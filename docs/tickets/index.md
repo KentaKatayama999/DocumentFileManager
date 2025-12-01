@@ -53,8 +53,8 @@
 
 | 番号 | タイトル | ステータス | 優先度 | 見積時間 | 実績時間 | 依存 |
 |-----|---------|----------|--------|---------|---------|-----|
-| [#004](004-checkitem-uibuilder-refactoring.md) | CheckItemUIBuilder縮小リファクタリング | Done | Medium | 6-8h | 0.5h | #003 |
-| [#005](005-window-command-setup.md) | Window側コマンド設定実装 | Deferred | Medium | 6-8h | - | #004 |
+| [#004](004-checkitem-uibuilder-refactoring.md) | CheckItemUIBuilder リファクタリング（Factory導入） | Done | Medium | 6-8h | 0.5h | #003 |
+| [#005](005-window-command-setup.md) | Window側コマンド設定実装（将来検討） | Deferred | Low | 6-8h | - | #004 |
 
 **Phase 2 小計**: 12-16時間
 
@@ -87,8 +87,8 @@
 | 優先度 | 件数 | 見積時間 |
 |--------|-----|---------|
 | High | 4 | 16-24h |
-| Medium | 2 | 12-16h |
-| Low | 0 | 0h |
+| Medium | 1 | 6-8h |
+| Low | 1 | 6-8h |
 
 ---
 
@@ -101,9 +101,9 @@
   ↓
 #003 CheckItemViewModelFactory作成
   ↓
-#004 CheckItemUIBuilder縮小リファクタリング
+#004 CheckItemUIBuilder リファクタリング（Factory導入）
   ↓
-#005 Window側コマンド設定実装
+#005 Window側コマンド設定実装（将来検討）※Deferred
   ↓
 #006 統合テスト・動作確認
 ```
@@ -130,17 +130,21 @@
 
 ### Phase 2: リファクタリング実装（12-16時間）
 
-**目的**: God Classを解消し、責務を分離
+**目的**: God Class問題を段階的に解消し、責務を分離
 
 **成果物**:
-- 縮小されたCheckItemUIBuilder（UI生成のみ）
-- Window側コマンド設定（MainWindow, ChecklistWindow）
-- コールバック方式の廃止
+- Factory導入によるViewModel構築ロジック分離
+- DataTemplate使用によるUI生成の簡素化
+- コマンド設定の整理・集約（`SetupCommandsForHierarchy()`）
 
 **完了条件**:
-- CheckItemUIBuilderが200行以下に縮小
-- コマンド設定がWindow側に移動
+- ViewModel構築ロジックがFactoryに移譲されている
+- DataTemplateを使用したUI生成に移行
 - ビルド成功（警告なし）
+
+**延期項目（#005）**:
+- コマンド設定のWindow側完全移動
+- 200行以下への縮小
 
 ---
 
@@ -236,3 +240,4 @@ Open → In Progress → Review → Done
 |------|---------|
 | 2025-11-29 | チケット一覧作成、6チケット追加 |
 | 2025-12-01 | 実装完了に伴う更新 - Done: 5件、Deferred: 1件 |
+| 2025-12-01 | ドキュメント修正 - #004, #005のタイトル・内容を実態に合わせて更新 |
