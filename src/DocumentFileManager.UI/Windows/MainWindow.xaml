@@ -14,6 +14,8 @@
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <converters:FileExtensionToIconConverter x:Key="FileExtensionToIconConverter"/>
+        <converters:BoolToGrayBrushConverter x:Key="BoolToGrayBrushConverter"/>
+        <converters:BoolToBackgroundBrushConverter x:Key="BoolToBackgroundBrushConverter"/>
 
         <!-- CheckBoxのスタイル（MainWindow用：読み取り専用表示） -->
         <Style x:Key="CheckItemCheckBoxStyle" TargetType="CheckBox">
@@ -152,6 +154,11 @@
                                 <MenuItem Header="削除(_D)" Click="DeleteDocumentMenuItem_Click"/>
                             </ContextMenu>
                         </ListView.ContextMenu>
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="Background" Value="{Binding IsLatest, Converter={StaticResource BoolToBackgroundBrushConverter}}"/>
+                            </Style>
+                        </ListView.ItemContainerStyle>
                         <ListView.View>
                             <GridView>
                                 <GridViewColumn Header="ファイル名" Width="280">
@@ -162,12 +169,21 @@
                                                        Width="16" Height="16"
                                                        Margin="0,0,5,0"
                                                        VerticalAlignment="Center"/>
-                                                <TextBlock Text="{Binding FileName}" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding FileName}"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{Binding IsLatest, Converter={StaticResource BoolToGrayBrushConverter}}"/>
                                             </StackPanel>
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>
-                                <GridViewColumn Header="追加日時" Width="140" DisplayMemberBinding="{Binding AddedAt, StringFormat={}{0:yyyy/MM/dd HH:mm}}"/>
+                                <GridViewColumn Header="追加日時" Width="140">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding AddedAt, StringFormat={}{0:yyyy/MM/dd HH:mm}}"
+                                                       Foreground="{Binding IsLatest, Converter={StaticResource BoolToGrayBrushConverter}}"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
                             </GridView>
                         </ListView.View>
                     </ListView>

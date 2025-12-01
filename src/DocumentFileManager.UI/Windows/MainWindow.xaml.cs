@@ -11,6 +11,7 @@ using DocumentFileManager.Infrastructure.Repositories;
 using DocumentFileManager.UI.Configuration;
 using DocumentFileManager.UI.Dialogs;
 using DocumentFileManager.UI.Helpers;
+using DocumentFileManager.UI.Models;
 using DocumentFileManager.UI.Services;
 using DocumentFileManager.UI.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
@@ -737,7 +738,15 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (DocumentsListView.SelectedItem is Document document)
+            // DocumentDisplayItem（フィルタリング時）またはDocument（通常時）両方をサポート
+            Document? document = DocumentsListView.SelectedItem switch
+            {
+                DocumentDisplayItem displayItem => displayItem.Document,
+                Document doc => doc,
+                _ => null
+            };
+
+            if (document != null)
             {
                 _logger.LogInformation("資料を開きます: {FileName}", document.FileName);
 
@@ -1092,7 +1101,15 @@ public partial class MainWindow : Window
     /// </summary>
     private async void DocumentsListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (DocumentsListView.SelectedItem is Document selectedDocument)
+        // DocumentDisplayItem（フィルタリング時）またはDocument（通常時）両方をサポート
+        Document? selectedDocument = DocumentsListView.SelectedItem switch
+        {
+            DocumentDisplayItem displayItem => displayItem.Document,
+            Document doc => doc,
+            _ => null
+        };
+
+        if (selectedDocument != null)
         {
             await HighlightCheckItemsByDocument(selectedDocument);
         }
@@ -1115,13 +1132,23 @@ public partial class MainWindow : Window
             // 新しい選択を設定
             _selectedCheckItem = checkItem;
 
-            // チェック項目に紐づく資料を取得
+            // チェック項目に紐づく資料を取得（紐づけ日時も取得）
             var checkItemDocumentRepo = _serviceProvider.GetRequiredService<ICheckItemDocumentRepository>();
             var linkedItems = await checkItemDocumentRepo.GetByCheckItemIdAsync(checkItem.Entity.Id);
+
+            // 最新の紐づけを特定（LinkedAtが最も新しいもの）
+            var latestLinkedItem = linkedItems.OrderByDescending(x => x.LinkedAt).FirstOrDefault();
+            var latestDocumentId = latestLinkedItem?.DocumentId;
+
             var documentIds = linkedItems.Select(x => x.DocumentId).ToHashSet();
 
-            // フィルタリング
-            var filteredDocuments = _allDocuments.Where(d => documentIds.Contains(d.Id)).ToList();
+            // フィルタリングして表示用アイテムに変換
+            var filteredDocuments = _allDocuments
+                .Where(d => documentIds.Contains(d.Id))
+                .Select(d => new DocumentDisplayItem(d, d.Id == latestDocumentId))
+                .OrderByDescending(d => d.IsLatest)  // 最新を先頭に
+                .ThenByDescending(d => d.AddedAt)    // 同じなら追加日時順
+                .ToList();
 
             DocumentsListView.ItemsSource = filteredDocuments;
             DocumentCountText.Text = $"{filteredDocuments.Count} 件（フィルタリング中）";
@@ -1132,7 +1159,8 @@ public partial class MainWindow : Window
                 SetElementBackground(element, new SolidColorBrush(Color.FromRgb(227, 242, 253))); // #E3F2FD
             }
 
-            _logger.LogInformation("チェック項目 '{Label}' に紐づく資料 {Count} 件を表示しました", checkItem.Label, filteredDocuments.Count);
+            _logger.LogInformation("チェック項目 '{Label}' に紐づく資料 {Count} 件を表示しました（最新: DocumentId={LatestId}）",
+                checkItem.Label, filteredDocuments.Count, latestDocumentId);
         }
         catch (Exception ex)
         {
@@ -1240,7 +1268,15 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (DocumentsListView.SelectedItem is not Document document)
+            // DocumentDisplayItem（フィルタリング時）またはDocument（通常時）両方をサポート
+            Document? document = DocumentsListView.SelectedItem switch
+            {
+                DocumentDisplayItem displayItem => displayItem.Document,
+                Document doc => doc,
+                _ => null
+            };
+
+            if (document == null)
             {
                 return;
             }
@@ -1294,7 +1330,15 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (DocumentsListView.SelectedItem is not Document document)
+            // DocumentDisplayItem（フィルタリング時）またはDocument（通常時）両方をサポート
+            Document? document = DocumentsListView.SelectedItem switch
+            {
+                DocumentDisplayItem displayItem => displayItem.Document,
+                Document doc => doc,
+                _ => null
+            };
+
+            if (document == null)
             {
                 return;
             }
