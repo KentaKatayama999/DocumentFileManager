@@ -26,6 +26,8 @@
 - 📊 データ整合性チェック機能
 - 🎨 UI設定のカスタマイズ（外部JSON設定）
 - 🔐 個人設定対応（appsettings.local.json）
+- 🎨 **紐づけ表示機能**（最新リンクの資料に紐づいたチェック項目を視覚的に強調表示）
+- 📦 **NuGet Package対応**（GitHub Packagesで配布）
 
 ## 新機能：プロジェクト固有DB管理
 
@@ -291,13 +293,15 @@ bool exists = checklistService.ChecklistExists("checklist_test.json");
 - ✅ コマンドライン引数対応
 - ✅ 個人設定対応（appsettings.local.json）
 - ✅ サービスAPI（IDocumentService, IChecklistService）
+- ✅ NuGet Package化（GitHub Packages v1.3.2）
+- ✅ チェックリスト紐づけ表示機能（最新リンク判定、文字色変更）
+- ✅ キャプチャ復帰時削除機能
 
 ### 進行中
 - 🔄 テスト実装
+- 🔄 CI/CD パイプライン整備
 
 ### 未着手
-- ⬜ NuGet Package化
-- ⬜ CI/CD パイプライン整備
 - ⬜ パフォーマンス最適化
 
 ## ドキュメント
