@@ -1,0 +1,47 @@
+@startuml ComponentDiagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/v2.0.1/C4_Component.puml
+
+title Component Diagram for Document File Manager
+
+Container(app, "Document File Manager", "WPF Application", "Main application container") {
+    
+    Component(main_window, "MainWindow", "WPF Window", "Main UI for document management")
+    Component(checklist_window, "ChecklistWindow", "WPF Window", "UI for checklist operations")
+    Component(vm, "CheckItemViewModel", "ViewModel", "Manages check item state and logic")
+
+    Component(capture_service, "ScreenCaptureService", "Service", "Handles screen capture operations")
+    Component(checklist_service, "ChecklistService", "Service", "Manages checklist business logic")
+    Component(doc_service, "DocumentService", "Service", "Manages document business logic")
+    
+    Component(doc_repo, "DocumentRepository", "Repository", "Accesses Documents table")
+    Component(check_repo, "CheckItemRepository", "Repository", "Accesses CheckItems table")
+    Component(link_repo, "CheckItemDocumentRepository", "Repository", "Accesses CheckItemDocuments table")
+    
+    Component(saver, "ChecklistSaver", "Service", "Persists checklist definitions to JSON")
+    Component(db_context, "DocumentFileManagerContext", "EF Core DbContext", "Manages database session")
+}
+
+ContainerDb(db, "SQLite Database", "SQLite", "Stores metadata")
+ContainerDb(fs, "File System", "NTFS/FAT32", "Stores files")
+
+Rel(main_window, doc_service, "Uses")
+Rel(main_window, doc_repo, "Uses")
+Rel(checklist_window, checklist_service, "Uses")
+Rel(checklist_window, capture_service, "Uses")
+Rel(checklist_window, vm, "Binds to")
+
+Rel(vm, check_repo, "Uses")
+Rel(vm, link_repo, "Uses")
+
+Rel(doc_service, doc_repo, "Uses")
+Rel(checklist_service, check_repo, "Uses")
+
+Rel(doc_repo, db_context, "Uses")
+Rel(check_repo, db_context, "Uses")
+Rel(link_repo, db_context, "Uses")
+
+Rel(db_context, db, "Reads/Writes", "EF Core")
+Rel(saver, fs, "Reads/Writes", "JSON")
+Rel(capture_service, fs, "Writes", "Images")
+
+@enduml

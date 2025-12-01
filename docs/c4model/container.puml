@@ -1,0 +1,29 @@
+@startuml ContainerDiagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/v2.0.1/C4_Container.puml
+
+title Container Diagram for Document File Manager
+
+Person(user, "End User", "Document Manager, Checker")
+
+System_Boundary(c1, "Document File Manager System") {
+    Container(app, "Document File Manager", "WPF, .NET 9.0", "Main application for managing documents and checklists.\n(Uses CommunityToolkit.Mvvm, Serilog)")
+    Container(viewer, "Document Viewer", "WPF, .NET 9.0", "Lightweight viewer process for displaying documents.\n(Uses WebView2)")
+    
+    ContainerDb(db, "SQLite Database", "SQLite", "Stores document metadata, checklist items, and relationships.\n(workspace.db)")
+    ContainerDb(fs, "File System", "NTFS/FAT32", "Stores physical document files, captured images, and checklist definitions.")
+}
+
+System_Ext(office, "Office Applications", "Word, Excel, etc.")
+System_Ext(cad, "CAD Applications", "AutoCAD, etc.")
+
+Rel(user, app, "Uses", "Mouse/Keyboard")
+Rel(app, viewer, "Launches", "Process.Start")
+
+Rel(app, db, "Reads/Writes", "EF Core")
+Rel(app, fs, "Reads/Writes", "System.IO")
+Rel(viewer, fs, "Reads", "System.IO")
+
+Rel(app, office, "Opens files", "Process.Start")
+Rel(app, cad, "Opens files", "Process.Start")
+
+@enduml

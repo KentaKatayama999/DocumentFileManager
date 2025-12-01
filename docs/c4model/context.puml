@@ -1,0 +1,20 @@
+@startuml SystemContext
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/v2.0.1/C4_Context.puml
+
+' SHOW_PERSON_OUTLINE()
+
+title System Context Diagram for Document File Manager
+
+Person(user, "End User", "資料管理者、チェック作業者\n(Document Manager, Checker)")
+
+System(doc_manager, "Document File Manager", "技術資料とチェックリストを統合管理し、進捗を可視化するWPFアプリケーション\n(WPF Desktop Application)")
+
+System_Ext(external_apps, "External Applications", "Office (Word, Excel), CAD, PDF Viewer, Mail etc.")
+
+Rel(user, doc_manager, "資料登録、チェックリスト操作、進捗確認", "Mouse/Keyboard")
+Rel(user, external_apps, "資料の閲覧・編集", "Direct Interaction")
+
+Rel(doc_manager, external_apps, "ファイルを開く", "Process.Start")
+Rel(doc_manager, external_apps, "画面キャプチャを取得する", "Window API")
+
+@enduml
