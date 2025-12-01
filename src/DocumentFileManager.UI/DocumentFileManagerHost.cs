@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using DocumentFileManager.UI.Configuration;
 using DocumentFileManager.UI.Windows;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
@@ -42,9 +43,15 @@ public class DocumentFileManagerHost : IDisposable
     /// MainWindowを表示（カスタム設定を指定）
     /// </summary>
     /// <param name="documentRootPath">プロジェクトのルートパス</param>
-    /// <param name="pathSettings">パス設定（nullの場合はデフォルト）</param>
+    /// <param name="pathSettings">パス設定（nullの場合はappsettings.jsonから読み込み）</param>
     public static void ShowMainWindow(string documentRootPath, PathSettings? pathSettings)
     {
+        // pathSettingsがnullの場合はappsettings.jsonから読み込む
+        if (pathSettings == null)
+        {
+            pathSettings = LoadPathSettingsFromConfig();
+        }
+
         var host = new DocumentFileManagerHost();
         host.Initialize(documentRootPath, pathSettings);
         host.InitializeDatabaseAsync().Wait();
@@ -66,6 +73,25 @@ public class DocumentFileManagerHost : IDisposable
     }
 
     /// <summary>
+    /// appsettings.jsonおよびappsettings.local.jsonからPathSettingsを読み込む
+    /// </summary>
+    private static PathSettings LoadPathSettingsFromConfig()
+    {
+        var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+
+        var configuration = new ConfigurationBuilder()
+            .SetBasePath(baseDirectory)
+            .AddJsonFile("appsettings.json", optional: true)
+            .AddJsonFile("appsettings.local.json", optional: true) // 個人設定（優先）
+            .Build();
+
+        var pathSettings = new PathSettings();
+        configuration.GetSection("PathSettings").Bind(pathSettings);
+
+        return pathSettings;
+    }
+
+    /// <summary>
     /// チェックリストエディターウィンドウを表示
     /// </summary>
     /// <param name="documentRootPath">プロジェクトのルートパス</param>
@@ -78,9 +104,15 @@ public class DocumentFileManagerHost : IDisposable
     /// チェックリストエディターウィンドウを表示（カスタム設定を指定）
     /// </summary>
     /// <param name="documentRootPath">プロジェクトのルートパス</param>
-    /// <param name="pathSettings">パス設定（nullの場合はデフォルト）</param>
+    /// <param name="pathSettings">パス設定（nullの場合はappsettings.jsonから読み込み）</param>
     public static void ShowChecklistEditor(string documentRootPath, PathSettings? pathSettings)
     {
+        // pathSettingsがnullの場合はappsettings.jsonから読み込む
+        if (pathSettings == null)
+        {
+            pathSettings = LoadPathSettingsFromConfig();
+        }
+
         var host = new DocumentFileManagerHost();
         host.Initialize(documentRootPath, pathSettings);
 
@@ -98,7 +130,7 @@ public class DocumentFileManagerHost : IDisposable
     /// アプリケーションを初期化
     /// </summary>
     /// <param name="documentRootPath">プロジェクトのルートパス</param>
-    /// <param name="pathSettings">パス設定（nullの場合はデフォルト）</param>
+    /// <param name="pathSettings">パス設定（nullの場合はappsettings.jsonから読み込み）</param>
     /// <param name="configureLogger">Serilog設定のカスタマイズ（オプション）</param>
     /// <returns>このインスタンス（メソッドチェーン可能）</returns>
     public DocumentFileManagerHost Initialize(
@@ -120,6 +152,9 @@ public class DocumentFileManagerHost : IDisposable
         {
             throw new DirectoryNotFoundException($"指定されたパスが見つかりません: {documentRootPath}");
         }
+
+        // pathSettingsがnullの場合はappsettings.jsonから読み込む
+        pathSettings ??= LoadPathSettingsFromConfig();
 
         _host = AppInitializer.CreateHost(documentRootPath, pathSettings, configureLogger);
         _host.Start();
