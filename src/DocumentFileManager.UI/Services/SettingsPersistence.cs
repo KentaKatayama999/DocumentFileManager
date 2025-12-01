@@ -18,34 +18,35 @@ public class SettingsPersistence
     }
 
     /// <summary>
-    /// PathSettingsをappsettings.jsonに保存する
+    /// PathSettingsをappsettings.local.jsonに保存する
     /// </summary>
+    /// <remarks>
+    /// appsettings.local.jsonはビルド時に上書きされないユーザー設定ファイルとして使用。
+    /// App.xaml.csで読み込み時に優先されるため、ユーザー設定は正しく反映される。
+    /// </remarks>
     public async Task SavePathSettingsAsync(PathSettings pathSettings, string appsettingsPath)
     {
         try
         {
-            _logger.LogInformation("PathSettingsを保存します: {Path}", appsettingsPath);
+            // appsettings.local.json に保存（ビルドで上書きされない）
+            var localSettingsPath = Path.Combine(Path.GetDirectoryName(appsettingsPath)!, "appsettings.local.json");
+            _logger.LogInformation("PathSettingsを保存します: {Path}", localSettingsPath);
 
-            // 既存のappsettings.jsonを読み込む
-            if (!File.Exists(appsettingsPath))
-            {
-                _logger.LogWarning("appsettings.jsonが見つかりません: {Path}", appsettingsPath);
-                return;
-            }
-
-            var json = await File.ReadAllTextAsync(appsettingsPath);
-            using var document = JsonDocument.Parse(json);
-            var root = document.RootElement;
-
-            // 新しいJSONオブジェクトを構築
+            // 既存のappsettings.local.jsonを読み込む（なければ空のオブジェクト）
             var newRoot = new Dictionary<string, object?>();
-
-            // 既存のセクションをコピー
-            foreach (var property in root.EnumerateObject())
+            if (File.Exists(localSettingsPath))
             {
-                if (property.Name != "PathSettings")
+                var json = await File.ReadAllTextAsync(localSettingsPath);
+                using var document = JsonDocument.Parse(json);
+                var root = document.RootElement;
+
+                // 既存のセクションをコピー
+                foreach (var property in root.EnumerateObject())
                 {
-                    newRoot[property.Name] = JsonSerializer.Deserialize<object>(property.Value.GetRawText());
+                    if (property.Name != "PathSettings")
+                    {
+                        newRoot[property.Name] = JsonSerializer.Deserialize<object>(property.Value.GetRawText());
+                    }
                 }
             }
 
@@ -68,9 +69,9 @@ public class SettingsPersistence
             };
 
             var newJson = JsonSerializer.Serialize(newRoot, options);
-            await File.WriteAllTextAsync(appsettingsPath, newJson);
+            await File.WriteAllTextAsync(localSettingsPath, newJson);
 
-            _logger.LogInformation("PathSettingsを保存しました");
+            _logger.LogInformation("PathSettingsを appsettings.local.json に保存しました");
         }
         catch (Exception ex)
         {
