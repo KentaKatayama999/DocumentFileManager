@@ -1161,12 +1161,16 @@ public partial class MainWindow : Window
             var linkedItems = await checkItemDocumentRepo.GetByDocumentIdAsync(document.Id);
             var checkItemIds = linkedItems.Select(x => x.CheckItemId).ToHashSet();
 
-            // ハイライト（薄い黄色）
+            // ハイライト（薄い黄色）- チェックONの項目のみ
             foreach (var checkItemId in checkItemIds)
             {
                 if (_checkItemUIElements.TryGetValue(checkItemId, out var element))
                 {
-                    SetElementBackground(element, new SolidColorBrush(Color.FromRgb(255, 249, 196))); // #FFF9C4
+                    // チェックが入っている項目のみハイライト
+                    if (element.Tag is CheckItemViewModel viewModel && viewModel.IsChecked)
+                    {
+                        SetElementBackground(element, new SolidColorBrush(Color.FromRgb(255, 249, 196))); // #FFF9C4
+                    }
                 }
             }
 
