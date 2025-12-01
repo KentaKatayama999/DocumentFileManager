@@ -1151,7 +1151,10 @@ public partial class MainWindow : Window
                 .ToList();
 
             DocumentsListView.ItemsSource = filteredDocuments;
-            DocumentCountText.Text = $"{filteredDocuments.Count} 件（フィルタリング中）";
+            var countText = filteredDocuments.Count > 1
+                ? $"{filteredDocuments.Count} 件（フィルタリング中 - 過去の登録はグレー表示）"
+                : $"{filteredDocuments.Count} 件（フィルタリング中）";
+            DocumentCountText.Text = countText;
 
             // 選択されたチェック項目をハイライト（薄い青）
             if (_checkItemUIElements.TryGetValue(checkItem.Entity.Id, out var element))
