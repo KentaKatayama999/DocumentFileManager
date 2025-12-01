@@ -1011,6 +1011,13 @@ public partial class MainWindow : Window
     /// </summary>
     private async Task HandleCheckItemSelected(CheckItemViewModel viewModel)
     {
+        // チェックOFFの項目はフィルター機能なし
+        if (!viewModel.IsChecked)
+        {
+            _logger.LogDebug("チェックOFFの項目はフィルターしません: {Label}", viewModel.Label);
+            return;
+        }
+
         // 現在選択中のチェック項目と同じ場合は選択解除
         if (_selectedCheckItem?.Entity.Id == viewModel.Entity.Id)
         {
