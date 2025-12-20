@@ -46,9 +46,15 @@ jobs:
           name: test-results
           path: ./coverage
 
-      - name: Pack NuGet package
+      - name: Pack NuGet packages
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: dotnet pack src/DocumentFileManager.UI/DocumentFileManager.UI.csproj -c Release -o ./nupkg
+        shell: pwsh
+        run: |
+          # 全パッケージをビルド・パック
+          dotnet pack src/DocumentFileManager/DocumentFileManager.csproj -c Release -o ./nupkg
+          dotnet pack src/DocumentFileManager.Infrastructure/DocumentFileManager.Infrastructure.csproj -c Release -o ./nupkg
+          dotnet pack src/DocumentFileManager.Viewer/DocumentFileManager.Viewer.csproj -c Release -o ./nupkg
+          dotnet pack src/DocumentFileManager.UI/DocumentFileManager.UI.csproj -c Release -o ./nupkg
 
       - name: Setup NuGet source for GitHub Packages
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
