@@ -1,0 +1,22 @@
+@startuml DocumentFileManager_Context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title システムコンテキスト図 - Document File Manager
+
+Person(user, "エンドユーザー", "資料管理者・チェック作業者<br/>資料の登録、チェックリストの操作、進捗確認を行う")
+
+System(docManager, "Document File Manager", "技術資料とチェックリストを統合管理し、進捗を可視化するWPFアプリケーション<br/>.NET 9.0 / WPF")
+
+System_Ext(externalApps, "外部アプリケーション", "Office (Word, Excel), CAD, PDF Viewer, メールクライアント等<br/>実際の資料ファイルの閲覧・編集に使用")
+
+System_Ext(fileSystem, "ファイルシステム", "NTFS/FAT32<br/>資料ファイル、キャプチャ画像、設定ファイルを保存")
+
+Rel(user, docManager, "資料登録、チェックリスト操作、進捗確認", "WPF UI")
+Rel(user, externalApps, "資料の閲覧・編集", "直接操作")
+Rel(docManager, externalApps, "ファイルを開く、ウィンドウ制御", "Process.Start, Win32 API")
+Rel(docManager, externalApps, "画面キャプチャ取得", "Win32 API / Screen Capture")
+Rel(docManager, fileSystem, "ファイル読み書き", "File I/O")
+
+SHOW_LEGEND()
+
+@enduml

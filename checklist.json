@@ -28,12 +28,12 @@
                 {
                   "label": "\u5C4B\u4E0A\u5E73\u9762\u56F3",
                   "type": "item",
-                  "checked": true
+                  "checked": false
                 },
                 {
                   "label": "\u5730\u4E0B1\u968E\u5E73\u9762\u56F3",
                   "type": "item",
-                  "checked": true
+                  "checked": false
                 },
                 {
                   "label": "3\u968E\u5E73\u9762\u56F3",
@@ -43,7 +43,7 @@
                 {
                   "label": "4\u968E\u5E73\u9762\u56F3",
                   "type": "item",
-                  "checked": true
+                  "checked": false
                 },
                 {
                   "label": "5\u968E\u5E73\u9762\u56F3",
@@ -53,7 +53,7 @@
                 {
                   "label": "\u5854\u5C4B\u5E73\u9762\u56F3",
                   "type": "item",
-                  "checked": true
+                  "checked": false
                 }
               ]
             },
@@ -173,7 +173,7 @@
                 {
                   "label": "\u885B\u751F\u8A2D\u5099\u56F3",
                   "type": "item",
-                  "checked": true
+                  "checked": false
                 }
               ]
             }
@@ -216,7 +216,7 @@
                 {
                   "label": "\u5E8A\u4ED5\u4E0A\u3052",
                   "type": "item",
-                  "checked": true
+                  "checked": false
                 }
               ]
             }
@@ -266,7 +266,7 @@
                 {
                   "label": "Document\u30C6\u30B9\u30C8",
                   "type": "item",
-                  "checked": false
+                  "checked": true
                 },
                 {
                   "label": "ValueObject\u30C6\u30B9\u30C8",
@@ -479,12 +479,12 @@
             {
               "label": "\u6708\u6B21\u5831\u544A\u66F8",
               "type": "item",
-              "checked": true
+              "checked": false
             },
             {
               "label": "\u5B8C\u6210\u5831\u544A\u66F8",
               "type": "item",
-              "checked": false
+              "checked": true
             }
           ]
         }
@@ -497,6 +497,11 @@
       "children": [
         {
           "label": "\u30C6\u30B9\u30C8\u9805\u76EE\uFF11",
+          "type": "item",
+          "checked": false
+        },
+        {
+          "label": "test",
           "type": "item",
           "checked": false
         }

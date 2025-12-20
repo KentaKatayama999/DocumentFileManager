@@ -1,0 +1,33 @@
+@startuml DocumentFileManager_Container
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title コンテナ図 - Document File Manager
+
+Person(user, "エンドユーザー", "資料管理者・チェック作業者")
+
+System_Boundary(docManagerBoundary, "Document File Manager") {
+    Container(uiApp, "UI Application", "WPF, .NET 9.0, MVVM", "メインユーザーインターフェース<br/>資料・チェックリスト管理、画面キャプチャ")
+    Container(viewerApp, "Document Viewer", "WPF, .NET 9.0, WebView2", "ドキュメントビューア<br/>PDF/画像/テキストファイルを別プロセスで表示")
+    Container(domainCore, "Domain Core", ".NET 8.0, Class Library", "ドメインエンティティ<br/>Document, CheckItem, CheckItemDocument<br/>ビジネスルール")
+    Container(infrastructure, "Infrastructure", ".NET 8.0, EF Core 8.0", "データアクセス層<br/>Repository実装、DbContext、マイグレーション")
+    ContainerDb(database, "SQLite Database", "SQLite", "workspace.db<br/>資料メタデータ、チェック項目、関連情報")
+}
+
+System_Ext(externalApps, "外部アプリケーション", "Office, CAD, PDF Viewer等")
+System_Ext(fileSystem, "ファイルシステム", "資料ファイル、キャプチャ画像、設定ファイル")
+
+Rel(user, uiApp, "操作", "WPF UI")
+Rel(uiApp, viewerApp, "ファイル表示依頼", "プロセス間通信")
+Rel(uiApp, infrastructure, "データ永続化", "DI / Interface")
+Rel(uiApp, domainCore, "ドメインロジック利用", "直接参照")
+Rel(viewerApp, domainCore, "エンティティ参照", "直接参照")
+Rel(infrastructure, domainCore, "ドメインエンティティ実装", "直接参照")
+Rel(infrastructure, database, "読み書き", "EF Core / SQLite")
+Rel(infrastructure, fileSystem, "チェックリスト読み書き", "File I/O")
+Rel(uiApp, fileSystem, "資料ファイル、キャプチャ画像保存", "File I/O")
+Rel(viewerApp, fileSystem, "ファイル読み込み", "File I/O")
+Rel(uiApp, externalApps, "ファイル起動、画面キャプチャ", "Process.Start, Win32 API")
+
+SHOW_LEGEND()
+
+@enduml

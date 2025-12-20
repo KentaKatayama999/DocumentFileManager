@@ -1,0 +1,65 @@
+@startuml DocumentFileManager_Component_UI
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title コンポーネント図 - Document File Manager UI Application
+
+Person(user, "エンドユーザー")
+
+Container_Boundary(uiContainer, "UI Application (WPF)") {
+    Component(mainWindow, "MainWindow", "WPF Window", "メインウィンドウ<br/>資料一覧、フィルタリング、登録・閲覧操作")
+    Component(checklistWindow, "ChecklistWindow", "WPF Window", "チェックリストウィンドウ<br/>チェック項目表示、状態変更、キャプチャトリガー")
+    Component(checkItemViewModel, "CheckItemViewModel", "ViewModel", "チェック項目の表示ロジック<br/>CheckItemState管理、IsLinkedToCurrentDocument")
+    Component(checkItemViewModelFactory, "CheckItemViewModelFactory", "Factory", "CheckItemViewModelの生成<br/>DI、依存解決")
+    Component(checkItemUIBuilder, "CheckItemUIBuilder", "UI Helper", "UI構築ヘルパー<br/>最新リンク判定、紐づけ表示フラグ設定")
+    Component(checkItemState, "CheckItemState", "Model", "チェック項目状態管理<br/>状態パターン実装")
+    Component(checkItemTransition, "CheckItemTransition", "Model", "状態遷移ロジック<br/>Restore/Capture処理")
+
+    Component(documentService, "DocumentService", "Application Service", "資料管理サービス<br/>登録、一括登録")
+    Component(checklistService, "ChecklistService", "Application Service", "チェックリスト管理サービス<br/>新規作成、存在確認")
+    Component(screenCaptureService, "ScreenCaptureService", "Application Service", "画面キャプチャサービス<br/>スクリーンショット取得・保存")
+    Component(checklistStateManager, "ChecklistStateManager", "Application Service", "チェックリスト状態管理<br/>キャプチャ削除、LinkedAt更新")
+    Component(dataIntegrityService, "DataIntegrityService", "Application Service", "データ整合性サービス<br/>DB/FS整合性チェック")
+    Component(dialogService, "WpfDialogService", "Infrastructure Service", "ダイアログサービス<br/>確認ダイアログ表示")
+
+    Component(appInitializer, "AppInitializer", "Initializer", "アプリ初期化<br/>DIコンテナ構築、サービス登録")
+}
+
+Container_Ext(infrastructure, "Infrastructure", "Repository実装")
+Container_Ext(domainCore, "Domain Core", "エンティティ")
+Container_Ext(database, "SQLite Database", "workspace.db")
+System_Ext(fileSystem, "ファイルシステム", "captures/, checklist.json")
+
+Rel(user, mainWindow, "操作", "WPF")
+Rel(user, checklistWindow, "操作", "WPF")
+
+Rel(mainWindow, documentService, "資料登録", "DI")
+Rel(mainWindow, checklistService, "チェックリスト操作", "DI")
+Rel(checklistWindow, checkItemViewModel, "データバインディング", "MVVM")
+
+Rel(checkItemViewModel, checkItemState, "状態管理", "Has-A")
+Rel(checkItemViewModel, checklistStateManager, "状態更新", "DI")
+Rel(checkItemViewModelFactory, checkItemViewModel, "生成", "Factory Pattern")
+Rel(checkItemUIBuilder, checkItemViewModel, "UI構築", "Builder Pattern")
+Rel(checkItemUIBuilder, checklistStateManager, "最新リンク判定", "DI")
+
+Rel(checkItemState, checkItemTransition, "状態遷移", "Delegation")
+Rel(checklistStateManager, dialogService, "確認ダイアログ", "DI")
+Rel(checklistStateManager, fileSystem, "キャプチャ削除", "File I/O")
+
+Rel(documentService, infrastructure, "データ永続化", "Repository")
+Rel(checklistService, infrastructure, "データ永続化", "Repository")
+Rel(screenCaptureService, fileSystem, "画像保存", "File I/O")
+Rel(dataIntegrityService, infrastructure, "整合性チェック", "Repository")
+
+Rel(infrastructure, database, "読み書き", "EF Core")
+Rel(infrastructure, domainCore, "エンティティ利用", "参照")
+
+Rel(appInitializer, documentService, "登録", "DI Container")
+Rel(appInitializer, checklistService, "登録", "DI Container")
+Rel(appInitializer, checklistStateManager, "登録", "DI Container")
+Rel(appInitializer, checkItemViewModelFactory, "登録", "DI Container")
+Rel(appInitializer, checkItemUIBuilder, "登録", "DI Container")
+
+SHOW_LEGEND()
+
+@enduml

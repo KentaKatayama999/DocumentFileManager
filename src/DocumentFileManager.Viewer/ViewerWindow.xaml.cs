@@ -216,6 +216,9 @@ public partial class ViewerWindow : Window
                 MessageBoxButton.OK, MessageBoxImage.Warning);
             Close();
         }
+
+        // async メソッドのため、完了を示す
+        await Task.CompletedTask;
     }
 
     /// <summary>

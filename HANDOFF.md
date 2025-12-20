@@ -141,6 +141,7 @@ private async Task DeleteCaptureFileAsync(string captureFilePath)
 ### High Priority
 
 1. **ドキュメント整理**
+   - ✅ C4モデル図作成完了（2025-12-04）
    - docs/archive配下の古いドキュメント整理
    - 設計ドキュメントの更新
 
@@ -155,5 +156,19 @@ private async Task DeleteCaptureFileAsync(string captureFilePath)
 
 ---
 
-**最終更新者**: Claude Agent
-**プロジェクトステータス**: v1.3.2リリース完了
+## 📐 C4モデル図（2025-12-04 追加）
+
+### 作成済みのC4図
+
+| レベル | PlantUML図 | 説明文書 | 内容 |
+|--------|-----------|---------|------|
+| **C1: Context** | [context.puml](docs/design/c4-model/context.puml) | [context.md](docs/design/c4-model/context.md) | システム全体と外部との関係 |
+| **C2: Container** | [container.puml](docs/design/c4-model/container.puml) | [container.md](docs/design/c4-model/container.md) | 主要コンテナと技術スタック |
+| **C3: Component (UI)** | [component-ui.puml](docs/design/c4-model/component-ui.puml) | [component-ui.md](docs/design/c4-model/component-ui.md) | UI Application内部構造 |
+
+詳細は [docs/design/c4-model/README.md](docs/design/c4-model/README.md) を参照してください。
+
+---
+
+**最終更新者**: Claude Agent (C4 Analyzer)
+**プロジェクトステータス**: v1.3.2リリース完了、C4モデル図整備完了
