@@ -76,7 +76,8 @@ public static class AppInitializer
                     // Cache=Shared: 複数接続でキャッシュ共有
                     var connectionString = $"Data Source={dbPath};Cache=Shared";
                     Log.Information("SQLite接続文字列: Cache=Shared");
-                    options.UseSqlite(connectionString);
+                    // NuGetパッケージからロードされた場合もマイグレーションを確実に見つけられるよう明示的に指定
+                    options.UseSqlite(connectionString, b => b.MigrationsAssembly("DocumentFileManager.Infrastructure"));
                 });
 
                 // UI設定の登録（デフォルト値を使用）
