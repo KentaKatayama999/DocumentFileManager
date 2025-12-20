@@ -58,10 +58,6 @@ public class DocumentFileManagerHost : IDisposable
 
         var mainWindow = host.CreateMainWindow();
 
-        // Closedイベントでのみ終了するようにする（Hide時に終了しないように）
-        var closed = false;
-        mainWindow.Closed += (s, e) => closed = true;
-
         mainWindow.Show();
 
         // メッセージループを手動で回す（MainWindowが閉じられるまで）
