@@ -9,7 +9,7 @@
 
     <!-- NuGet パッケージ設定 -->
     <PackageId>DocumentFileManager.UI</PackageId>
-    <Version>1.3.2</Version>
+    <Version>1.3.3</Version>
     <Authors>DocumentFileManager Contributors</Authors>
     <Company>DocumentFileManager</Company>
     <Description>A WPF-based document file manager library that can be integrated into other applications. Supports document management, checklist functionality, and screen capture features. v1.3.2: チェックリスト紐づけ表示機能改善、復帰時キャプチャ削除機能追加。</Description>
