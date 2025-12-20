@@ -48,7 +48,7 @@ jobs:
 
       - name: Pack NuGet package
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: dotnet pack src/DocumentFileManager.UI/DocumentFileManager.UI.csproj -c Release --no-build -o ./nupkg
+        run: dotnet pack src/DocumentFileManager.UI/DocumentFileManager.UI.csproj -c Release -o ./nupkg
 
       - name: Setup NuGet source for GitHub Packages
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
