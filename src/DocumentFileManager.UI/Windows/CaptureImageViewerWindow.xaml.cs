@@ -116,6 +116,11 @@ public partial class CaptureImageViewerWindow : Window
             {
                 if (File.Exists(_imagePath))
                 {
+                    // 画像リソースを解放してファイルロックを解除
+                    CaptureImage.Source = null;
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+
                     File.Delete(_imagePath);
                     IsDeleted = true;
 
