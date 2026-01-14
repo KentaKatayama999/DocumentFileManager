@@ -269,25 +269,29 @@ public class CheckItemUIBuilder
             {
                 _logger.LogInformation("キャプチャ画像削除を検知: ViewModelを更新します");
 
-                // UIスレッドでViewModelを更新（PropertyChanged通知が確実にUIに届くように）
-                System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                {
-                    viewModel.CaptureFilePath = null;
-                });
+                // ShowDialog後は既にUIスレッド上なので直接更新
+                viewModel.CaptureFilePath = null;
 
-                // DB更新
+                // DB更新（非同期で実行、完了を待たない）
                 if (_currentDocument != null)
                 {
-                    Task.Run(async () =>
+                    _ = Task.Run(async () =>
                     {
-                        var linkedItem = await _checkItemDocumentRepository.GetByDocumentAndCheckItemAsync(
-                            _currentDocument.Id, viewModel.Entity.Id);
-                        if (linkedItem != null)
+                        try
                         {
-                            await _checkItemDocumentRepository.UpdateCaptureFileAsync(linkedItem.Id, null);
-                            await _checkItemDocumentRepository.SaveChangesAsync();
+                            var linkedItem = await _checkItemDocumentRepository.GetByDocumentAndCheckItemAsync(
+                                _currentDocument.Id, viewModel.Entity.Id);
+                            if (linkedItem != null)
+                            {
+                                await _checkItemDocumentRepository.UpdateCaptureFileAsync(linkedItem.Id, null);
+                                await _checkItemDocumentRepository.SaveChangesAsync();
+                            }
                         }
-                    }).Wait();
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "キャプチャ削除のDB更新に失敗しました");
+                        }
+                    });
                 }
 
                 _logger.LogInformation("キャプチャ画像が削除されました");
