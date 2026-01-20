@@ -1,0 +1,30 @@
+{
+  "name": "{{FEATURE_NAME}}",
+  "description": "{{PROJECT_DESCRIPTION}}",
+  "status": "requirements",
+  "language": "ja",
+  "createdAt": "{{TIMESTAMP}}",
+  "updatedAt": "{{TIMESTAMP}}",
+  "phases": {
+    "requirements": {
+      "status": "pending",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "design": {
+      "status": "pending",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "tasks": {
+      "status": "pending",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "implementation": {
+      "status": "pending",
+      "startedAt": null,
+      "completedAt": null
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "name": "outlook-file-handling",
+  "description": "outlookのファイルを問題なく開くようにする",
+  "status": "completed",
+  "language": "ja",
+  "createdAt": "2026-01-20T00:00:00Z",
+  "updatedAt": "2026-01-20T00:00:00Z",
+  "phases": {
+    "requirements": {
+      "status": "approved",
+      "startedAt": "2026-01-20T00:00:00Z",
+      "completedAt": "2026-01-20T00:00:00Z"
+    },
+    "design": {
+      "status": "approved",
+      "startedAt": "2026-01-20T00:00:00Z",
+      "completedAt": "2026-01-20T00:00:00Z"
+    },
+    "tasks": {
+      "status": "approved",
+      "startedAt": "2026-01-20T00:00:00Z",
+      "completedAt": "2026-01-20T00:00:00Z"
+    },
+    "implementation": {
+      "status": "completed",
+      "startedAt": "2026-01-20T00:00:00Z",
+      "completedAt": "2026-01-20T00:00:00Z"
+    }
+  },
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  }
+}

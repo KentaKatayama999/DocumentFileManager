@@ -334,6 +334,10 @@ public partial class ViewerWindow : Window
             if (extension is ".msg" or ".eml")
             {
                 _externalWindowHandle = OpenEmailFile(filePath);
+
+                // ExternalWindowReadyイベントを発火（LoadingWindowを閉じるため）
+                Dispatcher.Invoke(() => ExternalWindowReady?.Invoke(this, _externalWindowHandle));
+
                 return _externalWindowHandle;
             }
 
